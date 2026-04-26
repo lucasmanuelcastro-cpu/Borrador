@@ -196,15 +196,28 @@ function renderPanelUsuario() {
 
         <!-- AGREGAR STOCK -->
         <div>
-          <h3>➕ Agregar Stock</h3>
-          ${estilosBase.map(e => `
-            <div class="flex space-between" style="margin-bottom: 5px;">
-              <span>${e}</span>
-              <input type="number" data-agregar="${e}" placeholder="0" style="width: 80px;">
-            </div>`).join("")}
-          <button id="btn-agregar-stock" style="width:100%; margin-top:10px; background:#059669;">✅ Sumar al Stock</button>
-          <button id="btn-reset-stock" style="width:100%; margin-top:6px; background:#ef4444;">Reset Stock</button>
+        <!-- AGREGAR STOCK -->
+<div>
+  <h3>➕ Agregar Stock</h3>
+  ${estilosBase.map(e => `
+    <div class="flex space-between" style="margin-bottom: 5px; align-items: center;">
+      <span>${e}</span>
+      <div style="display:flex; gap:3px; align-items:center;">
+        <input type="number" data-agregar="${e}" placeholder="0" style="width: 60px; margin-bottom:0;">
+        <div style="display:flex; flex-direction:column; gap:1px;">
+          <button onclick="agregarStockDirecto('${e}', true)"
+            style="padding:2px 6px; font-size:0.7em; background:#3b82f6; min-width:24px; border-radius:3px; margin:0; color:white; border:none; cursor:pointer;">C</button>
+          <button onclick="agregarStockDirecto('${e}', false)"
+            style="padding:2px 6px; font-size:0.7em; background:#6b7280; min-width:24px; border-radius:3px; margin:0; color:white; border:none; cursor:pointer;">S</button>
         </div>
+      </div>
+    </div>`).join("")}
+  <small style="display:block; margin:6px 0; color:#64748b; font-size:0.75em;">
+    <b>C:</b> Con etiqueta | <b>S:</b> Sin etiqueta
+  </small>
+  <button id="btn-agregar-stock" style="width:100%; margin-top:10px; background:#059669;">✅ Sumar al Stock</button>
+  <button id="btn-reset-stock" style="width:100%; margin-top:6px; background:#ef4444;">Reset Stock</button>
+</div>
 
         <!-- REGISTRAR VENTA -->
         <div>
