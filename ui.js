@@ -17,15 +17,23 @@ function renderStockGeneral() {
   const stats = getEstadisticasVentas();
   container.innerHTML = `
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-      <div class="card">
-        <h2>Stock General (Disponible)</h2>
-        ${estilosBase.map(e => `
-          <div class="flex space-between" style="padding: 4px 0; border-bottom: 1px solid #f3f4f6;">
-            <span>${e}</span>
-            <b style="color: ${(state.stockGeneral[e] || 0) < 0 ? '#ef4444' : '#1f2937'};">
-              ${state.stockGeneral[e] || 0} un.
-            </b>
-          </div>
+     <div class="card">
+  <h2>Stock General (Disponible)</h2>
+  ${estilosBase.map(e => {
+    const conEtiq = Object.values(state.usuarios).reduce((sum, u) => sum + (u.stock[e] || 0), 0);
+    const sinEtiq = Object.values(state.usuarios).reduce((sum, u) => sum + ((u.stockSinEtiqueta && u.stockSinEtiqueta[e]) || 0), 0);
+    const total = conEtiq + sinEtiq;
+    return `
+    <div class="flex space-between" style="padding: 4px 0; border-bottom: 1px solid #f3f4f6;">
+      <span>${e}</span>
+      <span style="font-size: 0.9em;">
+        <b style="color: #3b82f6;">C: ${conEtiq}</b> |
+        <b style="color: #6b7280;">S: ${sinEtiq}</b> |
+        <b style="color: ${total < 0? '#ef4444' : '#1f2937'};">Total: ${total} un.</b>
+      </span>
+    </div>`;
+  }).join("")}
+</div>
         `).join("")}
       </div>
       <div class="card" style="background: #f8fafc; border: 1px solid #e2e8f0;">
