@@ -12,7 +12,6 @@ function render() {
 }
 
 // 1. STOCK Y POPULARIDAD
-// 1. STOCK Y POPULARIDAD
 function renderStockGeneral() {
   const container = document.getElementById("stock-general-section");
   const stats = getEstadisticasVentas();
@@ -183,7 +182,7 @@ function renderPanelUsuario() {
   container.innerHTML = `
     <div class="panel-usuario card">
       <h1 style="border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">Panel de ${state.usuarioActivo}</h1>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
 
         <!-- STOCK PROPIO -->
         <div>
