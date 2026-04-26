@@ -242,7 +242,8 @@ function renderPanelUsuario() {
           </table>
         </div>
 
-        <!-- COLUMNA 2: AGREGAR STOCK -->
+       
+               <!-- COLUMNA 2: AGREGAR STOCK -->
         <div>
           <h3>➕ Agregar Stock</h3>
           ${estilosBase.map(e => `
@@ -256,6 +257,7 @@ function renderPanelUsuario() {
           </div>
           <button id="btn-reset-stock" style="width:100%; margin-top:6px; background:#ef4444; padding: 10px;">Reset Stock Total</button>
         </div>
+         
 
         <!-- COLUMNA 3: REGISTRAR VENTA -->
         <div>
