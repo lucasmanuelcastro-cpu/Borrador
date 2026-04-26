@@ -23,8 +23,8 @@ const state = {
   transferDesde: "Usuario1",
   transferHacia: "Usuario1",
   tipoLata: 'conEtiqueta',
-  historialStock: [], // [{usuario, estilo, cantidad, tipo, fecha}]
-  historialTransferencias: [] // [{desde, hacia, estilo, cantidad, tipo, fecha}]
+  historialStock: [],
+  historialTransferencias: []
 };
 
 // ===== FUNCIONES DE ESTADO =====
@@ -53,18 +53,18 @@ function getEstadisticasVentas() {
 
 function getTotalVentasPorMetodo(metodo) {
   return Object.values(state.usuarios).flatMap(u => u.ventas)
-   .filter(v => v.metodoCobro === metodo)
-   .reduce((sum, v) => sum + (v.totalCobrado || 0), 0);
+  .filter(v => v.metodoCobro === metodo)
+  .reduce((sum, v) => sum + (v.totalCobrado || 0), 0);
 }
 
 function getTotalVentasDinero() {
   return Object.values(state.usuarios).flatMap(u => u.ventas)
-   .reduce((sum, v) => sum + (v.totalCobrado || 0), 0);
+  .reduce((sum, v) => sum + (v.totalCobrado || 0), 0);
 }
 
 function getGananciaTotalProfeta() {
   return Object.values(state.usuarios).flatMap(u => u.ventas)
-   .reduce((sum, v) => sum + (v.paraProfeta || 0), 0);
+  .reduce((sum, v) => sum + (v.paraProfeta || 0), 0);
 }
 
 function getVentasGenerales() {
@@ -105,7 +105,6 @@ function registrarVentaLocal() {
 
   usuario.ventas.push(venta);
 
-  // Descontar stock
   Object.entries(state.ventaActual).forEach(([estilo, cant]) => {
     const c = Number(cant) || 0;
     if (c > 0) {
@@ -118,7 +117,6 @@ function registrarVentaLocal() {
     }
   });
 
-  // Actualizar cliente
   if (state.clienteNombre) {
     let cliente = state.clientesGlobales.find(c => c.nombre === state.clienteNombre);
     if (!cliente) {
@@ -128,7 +126,6 @@ function registrarVentaLocal() {
     cliente.deuda += Number(state.totalCobradoInput) || 0;
   }
 
-  // Reset
   state.ventaActual = { BLONDE: "", "IRISH RED": "", STOUT: "", "SESSION IPA": "", "RED IPA": "", HONEY: "" };
   state.clienteNombre = "";
   state.alquilerBarril = "";
@@ -139,7 +136,10 @@ function registrarVentaLocal() {
 }
 
 function modificarStockDirecto(usuario, estilo, valor) {
-  state.usuarios[usuario].stock[estilo] = Number(valor) || 0;
+  const cantidadAnterior = state.usuarios[usuario].stock[estilo] || 0;
+  const cantidadNueva = Number(valor) || 0;
+  state.usuarios[usuario].stock[estilo] = cantidadNueva;
+  registrarCargaStock(usuario, estilo, cantidadNueva - cantidadAnterior, 'conEtiqueta');
   render();
 }
 
@@ -216,6 +216,7 @@ function render() {
 // 1. STOCK Y POPULARIDAD
 function renderStockGeneral() {
   const container = document.getElementById("stock-general-section");
+  if (!container) return;
   const stats = getEstadisticasVentas();
   container.innerHTML = `
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
@@ -263,10 +264,10 @@ function renderStockGeneral() {
       <div class="card" style="background: #f8fafc; border: 1px solid #e2e8f0;">
         <h2>Popularidad (% Ventas)</h2>
         ${Object.entries(stats.totalesPorEstilo).length === 0
-     ? '<p style="color:gray; font-size: 0.9em;">Esperando primeras ventas...</p>'
+    ? '<p style="color:gray; font-size: 0.9em;">Esperando primeras ventas...</p>'
           : Object.entries(stats.totalesPorEstilo)
-         .sort((a, b) => b[1] - a[1])
-         .map(([estilo, cant]) => {
+        .sort((a, b) => b[1] - a[1])
+        .map(([estilo, cant]) => {
                 const porcentaje = ((cant / stats.granTotalLatas) * 100).toFixed(0);
                 return `
                   <div class="flex space-between" style="padding: 4px 0; border-bottom: 1px solid #e2e8f0;">
@@ -285,6 +286,7 @@ function renderStockGeneral() {
 // 2. VENTAS GENERALES
 function renderVentasGeneral() {
   const container = document.getElementById("ventas-general-section");
+  if (!container) return;
   const dineroEfectivo = getTotalVentasPorMetodo("efectivo");
   const dineroTransferencia = getTotalVentasPorMetodo("transferencia");
   const dineroTotal = getTotalVentasDinero();
@@ -321,7 +323,7 @@ function renderVentasGeneral() {
       <h2>📋 Historial Global (${todasLasVentas.length} ventas)</h2>
       <div style="max-height: 300px; overflow-y: auto; margin-top: 10px;">
         ${todasLasVentas.length === 0
-     ? '<p style="color:gray;">No hay ventas registradas aún.</p>'
+    ? '<p style="color:gray;">No hay ventas registradas aún.</p>'
           : [...todasLasVentas].reverse().map(v => {
               const vendedor = v.vendedor || Object.keys(state.usuarios).find(u =>
                 state.usuarios[u].ventas.some(vv => vv === v)
@@ -388,6 +390,7 @@ function renderClientesGlobales() {
 // 4. PANEL DE USUARIO
 function renderPanelUsuario() {
   const container = document.getElementById("panel-usuario-container");
+  if (!container) return;
   if (!state.usuarioActivo) { container.innerHTML = ""; return; }
   const usuario = state.usuarios[state.usuarioActivo];
   const preview = calcularPreview();
@@ -456,6 +459,19 @@ function renderPanelUsuario() {
             <button id="btn-agregar-stock-sin-etiqueta" style="background:#6b7280; padding: 10px; font-size: 0.9em;">📦 Sin Etiqueta</button>
           </div>
           <button id="btn-reset-stock" style="width:100%; margin-top:6px; background:#ef4444; padding: 10px;">Reset Stock Total</button>
+
+          <!-- NUEVO: TRANSFERIR C/E ↔ S/E -->
+          <div style="margin-top:15px; padding-top:15px; border-top:2px solid #e5e7eb;">
+            <h4 style="margin:0 0 8px 0; font-size:0.9em;">🔄 Convertir Stock Propio</h4>
+            <select id="transfer-estilo" style="width:100%; margin-bottom:6px; padding:6px; font-size:0.85em;">
+              ${estilosBase.map(e => `<option value="${e}">${e}</option>`).join("")}
+            </select>
+            <input type="number" id="transfer-cantidad" placeholder="Cantidad" style="width:100%; margin-bottom:6px; padding:6px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+              <button id="btn-ce-a-se" style="background:#60a5fa; padding:8px; font-size:0.8em;">C/E → S/E</button>
+              <button id="btn-se-a-ce" style="background:#f59e0b; padding:8px; font-size:0.8em;">S/E → C/E</button>
+            </div>
+          </div>
         </div>
 
         <!-- COLUMNA 3: REGISTRAR VENTA -->
@@ -567,7 +583,7 @@ function renderPanelUsuario() {
                   <small>📅 ${v.fecha || ''}</small>
                 </div>
                 <div style="color: #666; margin: 4px 0;">
-                  ${Object.entries(v.estilos || {}).filter(([,c]) => Number(c) > 0).map(([e,c]) => `${c} ${e}`).join(", ") || '—'}
+                                    ${Object.entries(v.estilos || {}).filter(([,c]) => Number(c) > 0).map(([e,c]) => `${c} ${e}`).join(", ") || '—'}
                   <b style="color:#1e40af;">(${Object.values(v.estilos || {}).reduce((a,b) => a+(Number(b)||0),0)} latas)</b>
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
@@ -616,21 +632,22 @@ function bindAutocompletadoCliente() {
     state.clienteNombre = input.value;
     if (val.length < 1) { sugerencias.style.display = "none"; return; }
 
-    const todos = [...new Set([
-...clientesHistoricos,
-...state.clientesGlobales.map(c => c.nombre)
-    ])];
+    const todos = state.clientesGlobales.map(c => c.nombre);
     const filtrados = todos.filter(n => n.toLowerCase().includes(val)).slice(0, 8);
 
     if (!filtrados.length) { sugerencias.style.display = "none"; return; }
 
-    sugerencias.innerHTML = filtrados.map(nombre => `
+    sugerencias.innerHTML = filtrados.map(nombre => {
+      const cliente = state.clientesGlobales.find(c => c.nombre === nombre);
+      const deuda = cliente? (cliente.deuda - cliente.pagado) : 0;
+      return `
       <div onclick="seleccionarCliente('${nombre.replace(/'/g, "\\'")}')"
         style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f3f4f6; font-size: 0.9em;"
         onmouseover="this.style.background='#eff6ff'"
         onmouseout="this.style.background='white'">
-        👤 ${nombre}
-      </div>`).join("");
+        👤 ${nombre} ${deuda > 0? `<span style="color:#dc2626; font-size:0.8em;">(Debe $${deuda.toLocaleString()})</span>` : ''}
+      </div>`;
+    }).join("");
     sugerencias.style.display = "block";
   });
 
@@ -663,10 +680,14 @@ function bindPanelEventos() {
       setState(p => { p.ventaActual[e.target.dataset.venta] = e.target.value; return p; });
     });
 
-  document.getElementById("cliente-nombre").oninput = (e) => { state.clienteNombre = e.target.value; };
-  document.getElementById("alquiler-barril").oninput = (e) => { state.alquilerBarril = e.target.value; };
+  const clienteInput = document.getElementById("cliente-nombre");
+  if (clienteInput) clienteInput.oninput = (e) => { state.clienteNombre = e.target.value; };
 
-  document.getElementById("btn-registrar").onclick = () => {
+  const barrilInput = document.getElementById("alquiler-barril");
+  if (barrilInput) barrilInput.oninput = (e) => { state.alquilerBarril = e.target.value; };
+
+  const btnRegistrar = document.getElementById("btn-registrar");
+  if (btnRegistrar) btnRegistrar.onclick = () => {
     const precio = Number(state.precioUnitario) || 0;
     const totalLatas = Object.values(state.ventaActual).reduce((a, b) => a + (Number(b) || 0), 0);
     if (precio > 0 && totalLatas > 0) {
@@ -676,7 +697,8 @@ function bindPanelEventos() {
     state.precioUnitario = "";
   };
 
-  document.getElementById("btn-guardar").onclick = async function() {
+  const btnGuardar = document.getElementById("btn-guardar");
+  if (btnGuardar) btnGuardar.onclick = async function() {
     this.disabled = true;
     this.textContent = "⏳ Guardando...";
     await guardarDatos();
@@ -686,9 +708,8 @@ function bindPanelEventos() {
     this.textContent = "💾 Guardar en Sheet";
   };
 
-  document.getElementById("btn-ver-clientes").onclick = mostrarTodosLosClientes;
-
-  document.getElementById("btn-agregar-stock").onclick = () => {
+  const btnAgregarStock = document.getElementById("btn-agregar-stock");
+  if (btnAgregarStock) btnAgregarStock.onclick = () => {
     document.querySelectorAll("[data-agregar]").forEach(input => {
       const estilo = input.dataset.agregar;
       const cantidad = Number(input.value);
@@ -699,7 +720,8 @@ function bindPanelEventos() {
     });
   };
 
-  document.getElementById("btn-agregar-stock-sin-etiqueta").onclick = () => {
+  const btnAgregarStockSin = document.getElementById("btn-agregar-stock-sin-etiqueta");
+  if (btnAgregarStockSin) btnAgregarStockSin.onclick = () => {
     document.querySelectorAll("[data-agregar]").forEach(input => {
       const estilo = input.dataset.agregar;
       const cantidad = Number(input.value);
@@ -715,12 +737,14 @@ function bindPanelEventos() {
           usuario.stockSinEtiqueta[estilo] = (usuario.stockSinEtiqueta[estilo] || 0) + cantidad;
           return prev;
         });
+        registrarCargaStock(state.usuarioActivo, estilo, cantidad, 'sinEtiqueta');
         input.value = "";
       }
     });
   };
 
-  document.getElementById("btn-reset-stock").onclick = () => {
+  const btnReset = document.getElementById("btn-reset-stock");
+  if (btnReset) btnReset.onclick = () => {
     if (confirm("¿Resetear todo el stock a 0?")) {
       setState(p => {
         estilosBase.forEach(e => {
@@ -733,10 +757,48 @@ function bindPanelEventos() {
       });
     }
   };
+
+  // NUEVO: Transferir C/E ↔ S/E
+  const btnCeSe = document.getElementById("btn-ce-a-se");
+  if (btnCeSe) btnCeSe.onclick = () => {
+    const estilo = document.getElementById("transfer-estilo").value;
+    const cantidad = Number(document.getElementById("transfer-cantidad").value);
+    if (cantidad > 0) {
+      setState(p => {
+        const u = p.usuarios[p.usuarioActivo];
+        if (!u.stockSinEtiqueta) u.stockSinEtiqueta = {};
+        u.stock[estilo] = (u.stock[estilo] || 0) - cantidad;
+        u.stockSinEtiqueta[estilo] = (u.stockSinEtiqueta[estilo] || 0) + cantidad;
+        return p;
+      });
+      registrarCargaStock(state.usuarioActivo, estilo, -cantidad, 'conEtiqueta');
+      registrarCargaStock(state.usuarioActivo, estilo, cantidad, 'sinEtiqueta');
+      document.getElementById("transfer-cantidad").value = "";
+    }
+  };
+
+  const btnSeCe = document.getElementById("btn-se-a-ce");
+  if (btnSeCe) btnSeCe.onclick = () => {
+    const estilo = document.getElementById("transfer-estilo").value;
+    const cantidad = Number(document.getElementById("transfer-cantidad").value);
+    if (cantidad > 0) {
+      setState(p => {
+        const u = p.usuarios[p.usuarioActivo];
+        if (!u.stockSinEtiqueta) u.stockSinEtiqueta = {};
+        u.stockSinEtiqueta[estilo] = (u.stockSinEtiqueta[estilo] || 0) - cantidad;
+        u.stock[estilo] = (u.stock[estilo] || 0) + cantidad;
+        return p;
+      });
+      registrarCargaStock(state.usuarioActivo, estilo, -cantidad, 'sinEtiqueta');
+      registrarCargaStock(state.usuarioActivo, estilo, cantidad, 'conEtiqueta');
+      document.getElementById("transfer-cantidad").value = "";
+    }
+  };
 }
 
 function renderUsuarios() {
   const container = document.getElementById("usuarios-section");
+  if (!container) return;
   container.innerHTML = Object.keys(state.usuarios).map(u => `
     <button onclick="setState(p => { p.usuarioActivo = '${u}'; return p; })"
       style="background: ${state.usuarioActivo === u? '#1e40af' : '#3b82f6'}; margin: 5px;">
@@ -746,6 +808,7 @@ function renderUsuarios() {
 
 function renderTransferencia() {
   const container = document.getElementById("transferencia-section");
+  if (!container) return;
   container.innerHTML = `
     <div class="card">
       <h2>📦 Transferencia de Stock entre Usuarios</h2>
@@ -774,24 +837,25 @@ function renderTransferencia() {
       <button id="btn-transferir" style="width:100%; margin-top:15px; background:#7c3aed;">🚚 Transferir Stock</button>
     </div>`;
 
-  document.getElementById("btn-transferir").onclick = () => {
+  const btnTransferir = document.getElementById("btn-transferir");
+  if (btnTransferir) btnTransferir.onclick = () => {
     const desde = state.transferDesde;
     const hacia = state.transferHacia;
     if (desde === hacia) {
       alert("No podés transferir al mismo usuario");
       return;
     }
-    
+
     document.querySelectorAll("[data-transfer]").forEach(input => {
       const estilo = input.dataset.transfer;
       const cantidad = Number(input.value);
       const tipo = document.querySelector(`[data-transfer-tipo="${estilo}"]`).value;
-      
+
       if (!isNaN(cantidad) && cantidad > 0) {
         setState((prev) => {
           const usuarioDesde = prev.usuarios[desde];
           const usuarioHacia = prev.usuarios[hacia];
-          
+
           if (tipo === 'con') {
             usuarioDesde.stock[estilo] = (usuarioDesde.stock[estilo] || 0) - cantidad;
             usuarioHacia.stock[estilo] = (usuarioHacia.stock[estilo] || 0) + cantidad;
@@ -803,6 +867,7 @@ function renderTransferencia() {
           }
           return prev;
         });
+        registrarTransferenciaHistorial(desde, hacia, estilo, cantidad, tipo === 'con'? 'conEtiqueta' : 'sinEtiqueta');
         input.value = "";
       }
     });
@@ -812,12 +877,9 @@ function renderTransferencia() {
 function mostrarTodosLosClientes() {
   const modal = document.createElement("div");
   modal.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px;";
-  
-  const todosLosClientes = [...new Set([
-    ...clientesHistoricos,
-    ...state.clientesGlobales.map(c => c.nombre)
-  ])].sort();
-  
+
+  const todosLosClientes = state.clientesGlobales.sort((a,b) => a.nombre.localeCompare(b.nombre));
+
   modal.innerHTML = `
     <div style="background:white; border-radius:12px; padding:24px; max-width:600px; width:100%; max-height:80vh; overflow-y:auto;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
@@ -825,29 +887,17 @@ function mostrarTodosLosClientes() {
         <button onclick="this.closest('div[style*=fixed]').remove()" style="background:#ef4444; padding:8px 16px;">✕ Cerrar</button>
       </div>
       <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:8px;">
-        ${todosLosClientes.map(nombre => {
-          const cliente = state.clientesGlobales.find(c => c.nombre === nombre);
-          const deuda = cliente ? (cliente.deuda - cliente.pagado) : 0;
+        ${todosLosClientes.map(cliente => {
+          const deuda = cliente.deuda - cliente.pagado;
           return `
-          <div style="padding:10px; border:1px solid #e5e7eb; border-radius:8px; ${deuda > 0 ? 'background:#fef2f2; border-color:#fecaca;' : 'background:#f9fafb;'}">
-            <div style="font-weight:600; font-size:0.9em;">${nombre}</div>
-            ${deuda > 0 ? `<div style="color:#dc2626; font-size:0.8em; margin-top:4px;">Debe: $${deuda.toLocaleString()}</div>` : '<div style="color:#059669; font-size:0.8em; margin-top:4px;">Sin deuda</div>'}
+          <div style="padding:10px; border:1px solid #e5e7eb; border-radius:8px; ${deuda > 0? 'background:#fef2f2; border-color:#fecaca;' : 'background:#f9fafb;'}">
+            <div style="font-weight:600; font-size:0.9em;">${cliente.nombre}</div>
+            ${deuda > 0? `<div style="color:#dc2626; font-size:0.8em; margin-top:4px;">Debe: $${deuda.toLocaleString()}</div>` : '<div style="color:#059669; font-size:0.8em; margin-top:4px;">Sin deuda</div>'}
           </div>`;
         }).join("")}
       </div>
     </div>`;
-  
+
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
   document.body.appendChild(modal);
-}
-
-function borrarCliente(nombre) {
-  if (!confirm(`¿Borrar cliente "${nombre}" del historial?`)) return;
-  const idx = state.clientesGlobales.findIndex(c => c.nombre === nombre);
-  if (idx !== -1) {
-    setState(p => {
-      p.clientesGlobales.splice(idx, 1);
-      return p;
-    });
-  }
 }
