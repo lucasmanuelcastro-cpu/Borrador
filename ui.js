@@ -240,7 +240,7 @@ function renderPanelUsuario() {
             </tfoot>
           </table>
         </div>
-
+}
         <!-- COLUMNA 2: AGREGAR STOCK - ESTA ESTABA VACÍA -->
         <div>
           <h3>➕ Agregar Stock</h3>
