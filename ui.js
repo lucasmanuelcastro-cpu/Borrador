@@ -183,7 +183,6 @@ function renderClientesGlobales() {
     </div>`;
 }
 
-// 4. PANEL DE USUARIO - NUEVO DISEÑO
 // 4. PANEL DE USUARIO
 function renderPanelUsuario() {
   const container = document.getElementById("panel-usuario-container");
@@ -242,8 +241,7 @@ function renderPanelUsuario() {
           </table>
         </div>
 
-       
-               <!-- COLUMNA 2: AGREGAR STOCK -->
+        <!-- COLUMNA 2: AGREGAR STOCK - ESTA ESTABA VACÍA -->
         <div>
           <h3>➕ Agregar Stock</h3>
           ${estilosBase.map(e => `
@@ -257,7 +255,6 @@ function renderPanelUsuario() {
           </div>
           <button id="btn-reset-stock" style="width:100%; margin-top:6px; background:#ef4444; padding: 10px;">Reset Stock Total</button>
         </div>
-         
 
         <!-- COLUMNA 3: REGISTRAR VENTA -->
         <div>
@@ -390,6 +387,7 @@ function renderPanelUsuario() {
   bindAutocompletadoCliente();
   bindPrecioUnitario();
 }
+
 // 5. PRECIO UNITARIO
 function bindPrecioUnitario() {
   const input = document.getElementById("precio-unitario");
