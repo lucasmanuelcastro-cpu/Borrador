@@ -1,4 +1,4 @@
-const estilosBase = ["BLONDE", "IRISH RED", "STOUT", "SESSION IPA", "RED IPA", "HONEY"];
+
 const costoPorLata = 1750;
 const costoPorLataSinEtiqueta = 1450;
 
