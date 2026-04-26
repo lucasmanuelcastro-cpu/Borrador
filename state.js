@@ -4,10 +4,10 @@ const costoPorLataSinEtiqueta = 1450;
 
 let state = {
   usuarios: {
-    Julian: { stock: {}, ventas: [] },
-    Matias: { stock: {}, ventas: [] },
-    Lucas: { stock: {}, ventas: [] },
-  },
+  Julian: { stock: {}, stockSinEtiqueta: {}, ventas: [] },
+  Matias: { stock: {}, stockSinEtiqueta: {}, ventas: [] },
+  Lucas: { stock: {}, stockSinEtiqueta: {}, ventas: [] },
+},
   clientesGlobales: [], 
   stockGeneral: {},
   usuarioActivo: null,
