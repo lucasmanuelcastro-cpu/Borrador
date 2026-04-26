@@ -47,10 +47,10 @@ function renderStockGeneral() {
       <div class="card" style="background: #f8fafc; border: 1px solid #e2e8f0;">
         <h2>Popularidad (% Ventas)</h2>
         ${Object.entries(stats.totalesPorEstilo).length === 0
-         ? '<p style="color:gray; font-size: 0.9em;">Esperando primeras ventas...</p>'
+        ? '<p style="color:gray; font-size: 0.9em;">Esperando primeras ventas...</p>'
           : Object.entries(stats.totalesPorEstilo)
-             .sort((a, b) => b[1] - a[1])
-             .map(([estilo, cant]) => {
+            .sort((a, b) => b[1] - a[1])
+            .map(([estilo, cant]) => {
                 const porcentaje = ((cant / stats.granTotalLatas) * 100).toFixed(0);
                 return `
                   <div class="flex space-between" style="padding: 4px 0; border-bottom: 1px solid #e2e8f0;">
@@ -106,7 +106,7 @@ function renderVentasGeneral() {
       <h2>📋 Historial Global (${todasLasVentas.length} ventas)</h2>
       <div style="max-height: 300px; overflow-y: auto; margin-top: 10px;">
         ${todasLasVentas.length === 0
-         ? '<p style="color:gray;">No hay ventas registradas aún.</p>'
+        ? '<p style="color:gray;">No hay ventas registradas aún.</p>'
           : [...todasLasVentas].reverse().map(v => {
               const vendedor = v.vendedor || Object.keys(state.usuarios).find(u =>
                 state.usuarios[u].ventas.some(vv => vv === v)
@@ -118,6 +118,7 @@ function renderVentasGeneral() {
                   <span style="margin-left:8px; background:#ede9fe; color:#7c3aed; border-radius:6px; padding:1px 7px; font-size:0.85em;">
                     ${vendedor}
                   </span>
+                </span>
                 <small style="color:#64748b;">📅 ${v.fecha || ''}</small>
               </div>
               <div style="color:#555; margin: 3px 0;">
@@ -196,28 +197,26 @@ function renderPanelUsuario() {
 
         <!-- AGREGAR STOCK -->
         <div>
-        <!-- AGREGAR STOCK -->
-<div>
-  <h3>➕ Agregar Stock</h3>
-  ${estilosBase.map(e => `
-    <div class="flex space-between" style="margin-bottom: 5px; align-items: center;">
-      <span>${e}</span>
-      <div style="display:flex; gap:3px; align-items:center;">
-        <input type="number" data-agregar="${e}" placeholder="0" style="width: 60px; margin-bottom:0;">
-        <div style="display:flex; flex-direction:column; gap:1px;">
-          <button onclick="agregarStockDirecto('${e}', true)"
-            style="padding:2px 6px; font-size:0.7em; background:#3b82f6; min-width:24px; border-radius:3px; margin:0; color:white; border:none; cursor:pointer;">C</button>
-          <button onclick="agregarStockDirecto('${e}', false)"
-            style="padding:2px 6px; font-size:0.7em; background:#6b7280; min-width:24px; border-radius:3px; margin:0; color:white; border:none; cursor:pointer;">S</button>
+          <h3>➕ Agregar Stock</h3>
+          ${estilosBase.map(e => `
+            <div class="flex space-between" style="margin-bottom: 5px; align-items: center;">
+              <span>${e}</span>
+              <div style="display:flex; gap:3px; align-items:center;">
+                <input type="number" data-agregar="${e}" placeholder="0" style="width: 60px; margin-bottom:0;">
+                <div style="display:flex; flex-direction:column; gap:1px;">
+                  <button onclick="agregarStockDirecto('${e}', true)"
+                    style="padding:2px 6px; font-size:0.7em; background:#3b82f6; min-width:24px; border-radius:3px; margin:0; color:white; border:none; cursor:pointer;">C</button>
+                  <button onclick="agregarStockDirecto('${e}', false)"
+                    style="padding:2px 6px; font-size:0.7em; background:#6b7280; min-width:24px; border-radius:3px; margin:0; color:white; border:none; cursor:pointer;">S</button>
+                </div>
+              </div>
+            </div>`).join("")}
+          <small style="display:block; margin:6px 0; color:#64748b; font-size:0.75em;">
+            <b>C:</b> Con etiqueta | <b>S:</b> Sin etiqueta
+          </small>
+          <button id="btn-agregar-stock" style="width:100%; margin-top:10px; background:#059669;">✅ Sumar al Stock</button>
+          <button id="btn-reset-stock" style="width:100%; margin-top:6px; background:#ef4444;">Reset Stock</button>
         </div>
-      </div>
-    </div>`).join("")}
-  <small style="display:block; margin:6px 0; color:#64748b; font-size:0.75em;">
-    <b>C:</b> Con etiqueta | <b>S:</b> Sin etiqueta
-  </small>
-  <button id="btn-agregar-stock" style="width:100%; margin-top:10px; background:#059669;">✅ Sumar al Stock</button>
-  <button id="btn-reset-stock" style="width:100%; margin-top:6px; background:#ef4444;">Reset Stock</button>
-</div>
 
         <!-- REGISTRAR VENTA -->
         <div>
@@ -384,8 +383,8 @@ function bindAutocompletadoCliente() {
     if (val.length < 1) { sugerencias.style.display = "none"; return; }
 
     const todos = [...new Set([
-     ...clientesHistoricos,
-     ...state.clientesGlobales.map(c => c.nombre)
+    ...clientesHistoricos,
+    ...state.clientesGlobales.map(c => c.nombre)
     ])];
     const filtrados = todos.filter(n => n.toLowerCase().includes(val)).slice(0, 8);
 
@@ -466,19 +465,21 @@ function bindPanelEventos() {
     });
   };
 
-document.getElementById("btn-reset-stock").onclick = () => {
-  if (confirm("¿Resetear todo el stock a 0?")) {
-    setState(p => {
-      estilosBase.forEach(e => {
-        p.usuarios[p.usuarioActivo].stock[e] = 0;
-        if (p.usuarios[p.usuarioActivo].stockSinEtiqueta) {
-          p.usuarios[p.usuarioActivo].stockSinEtiqueta[e] = 0; // ← Agregá esta línea
-        }
+  document.getElementById("btn-reset-stock").onclick = () => {
+    if (confirm("¿Resetear todo el stock a 0?")) {
+      setState(p => {
+        estilosBase.forEach(e => {
+          p.usuarios[p.usuarioActivo].stock[e] = 0;
+          if (p.usuarios[p.usuarioActivo].stockSinEtiqueta) {
+            p.usuarios[p.usuarioActivo].stockSinEtiqueta[e] = 0;
+          }
+        });
+        return p;
       });
-      return p;
-    });
-  }
-};
+    }
+  };
+}
+
 function renderUsuarios() {
   const container = document.getElementById("usuarios-section");
   container.innerHTML = Object.keys(state.usuarios).map(u => `
