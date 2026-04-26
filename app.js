@@ -4,12 +4,6 @@
  */
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // 1. Datos locales primero para arrancar rápido
-  cargarDatos();
-  render();
-
-  // 2. Sincronización única al entrar
-  await cargarDatosDesdeSheet();
-
+  // Esperamos a que ui.js termine de cargar
   console.log("Aplicacion lista.");
 });
