@@ -2,6 +2,208 @@
  * UI.JS - Control de la interfaz visual
  */
 
+// ===== ESTADO Y DATOS =====
+const estilosBase = ["BLONDE", "IRISH RED", "STOUT", "SESSION IPA", "RED IPA", "HONEY"];
+
+const state = {
+  usuarios: {
+    "Usuario1": {
+      stock: {"BLONDE": 0, "IRISH RED": 0, "STOUT": 0, "SESSION IPA": 0, "RED IPA": 0, "HONEY": 0},
+      stockSinEtiqueta: {"BLONDE": 0, "IRISH RED": 0, "STOUT": 0, "SESSION IPA": 0, "RED IPA": 0, "HONEY": 0},
+      ventas: []
+    }
+  },
+  usuarioActivo: "Usuario1",
+  clienteNombre: "",
+  ventaActual: { BLONDE: "", "IRISH RED": "", STOUT: "", "SESSION IPA": "", "RED IPA": "", HONEY: "" },
+  alquilerBarril: "",
+  precioUnitario: "",
+  totalCobradoInput: "",
+  clientesGlobales: [],
+  transferDesde: "Usuario1",
+  transferHacia: "Usuario1",
+  tipoLata: 'conEtiqueta',
+  historialStock: [], // [{usuario, estilo, cantidad, tipo, fecha}]
+  historialTransferencias: [] // [{desde, hacia, estilo, cantidad, tipo, fecha}]
+};
+
+// ===== FUNCIONES DE ESTADO =====
+function setState(updater) {
+  const newState = updater(state);
+  Object.assign(state, newState);
+  render();
+}
+
+// ===== FUNCIONES DE LÓGICA =====
+function getEstadisticasVentas() {
+  const todasLasVentas = Object.values(state.usuarios).flatMap(u => u.ventas);
+  const totalesPorEstilo = {};
+  let granTotalLatas = 0;
+
+  todasLasVentas.forEach(v => {
+    Object.entries(v.estilos || {}).forEach(([estilo, cant]) => {
+      const c = Number(cant) || 0;
+      totalesPorEstilo[estilo] = (totalesPorEstilo[estilo] || 0) + c;
+      granTotalLatas += c;
+    });
+  });
+
+  return { totalesPorEstilo, granTotalLatas };
+}
+
+function getTotalVentasPorMetodo(metodo) {
+  return Object.values(state.usuarios).flatMap(u => u.ventas)
+   .filter(v => v.metodoCobro === metodo)
+   .reduce((sum, v) => sum + (v.totalCobrado || 0), 0);
+}
+
+function getTotalVentasDinero() {
+  return Object.values(state.usuarios).flatMap(u => u.ventas)
+   .reduce((sum, v) => sum + (v.totalCobrado || 0), 0);
+}
+
+function getGananciaTotalProfeta() {
+  return Object.values(state.usuarios).flatMap(u => u.ventas)
+   .reduce((sum, v) => sum + (v.paraProfeta || 0), 0);
+}
+
+function getVentasGenerales() {
+  return Object.values(state.usuarios).flatMap(u => u.ventas);
+}
+
+function calcularPreview() {
+  const totalLatas = Object.values(state.ventaActual).reduce((a, b) => a + (Number(b) || 0), 0);
+  const costoUnitario = state.tipoLata === 'sinEtiqueta'? 1450 : 1750;
+  const costoTotal = totalLatas * costoUnitario;
+  const precioUnitario = Number(state.precioUnitario) || 0;
+  const totalCobrado = totalLatas * precioUnitario;
+  const gananciaBruta = totalCobrado - costoTotal;
+  const comision = gananciaBruta > 0? gananciaBruta * 0.5 : 0;
+  const paraProfeta = costoTotal + comision;
+
+  return { costoTotal, comision, paraProfeta, gananciaBruta };
+}
+
+function registrarVentaLocal() {
+  const usuario = state.usuarios[state.usuarioActivo];
+  const totalLatas = Object.values(state.ventaActual).reduce((a, b) => a + (Number(b) || 0), 0);
+  if (totalLatas === 0) return alert("Cargá al menos 1 lata");
+
+  const preview = calcularPreview();
+  const venta = {
+    cliente: state.clienteNombre || 'Consumidor Final',
+    estilos: {...state.ventaActual},
+    alquilerBarril: state.alquilerBarril,
+    tipoLata: state.tipoLata,
+    totalCobrado: Number(state.totalCobradoInput) || 0,
+    costoTotal: preview.costoTotal,
+    comision: preview.comision,
+    paraProfeta: preview.paraProfeta,
+    fecha: new Date().toLocaleString('es-AR'),
+    vendedor: state.usuarioActivo
+  };
+
+  usuario.ventas.push(venta);
+
+  // Descontar stock
+  Object.entries(state.ventaActual).forEach(([estilo, cant]) => {
+    const c = Number(cant) || 0;
+    if (c > 0) {
+      if (state.tipoLata === 'sinEtiqueta') {
+        if (!usuario.stockSinEtiqueta) usuario.stockSinEtiqueta = {};
+        usuario.stockSinEtiqueta[estilo] = (usuario.stockSinEtiqueta[estilo] || 0) - c;
+      } else {
+        usuario.stock[estilo] = (usuario.stock[estilo] || 0) - c;
+      }
+    }
+  });
+
+  // Actualizar cliente
+  if (state.clienteNombre) {
+    let cliente = state.clientesGlobales.find(c => c.nombre === state.clienteNombre);
+    if (!cliente) {
+      cliente = { nombre: state.clienteNombre, deuda: 0, pagado: 0 };
+      state.clientesGlobales.push(cliente);
+    }
+    cliente.deuda += Number(state.totalCobradoInput) || 0;
+  }
+
+  // Reset
+  state.ventaActual = { BLONDE: "", "IRISH RED": "", STOUT: "", "SESSION IPA": "", "RED IPA": "", HONEY: "" };
+  state.clienteNombre = "";
+  state.alquilerBarril = "";
+  state.precioUnitario = "";
+  state.totalCobradoInput = "";
+
+  render();
+}
+
+function modificarStockDirecto(usuario, estilo, valor) {
+  state.usuarios[usuario].stock[estilo] = Number(valor) || 0;
+  render();
+}
+
+function borrarVentaIndividual(index) {
+  if (!confirm("¿Borrar esta venta?")) return;
+  state.usuarios[state.usuarioActivo].ventas.splice(index, 1);
+  render();
+}
+
+function registrarPagoCliente(index, metodo) {
+  const cliente = state.clientesGlobales[index];
+  const deuda = cliente.deuda - cliente.pagado;
+  if (deuda > 0) {
+    cliente.pagado += deuda;
+    alert(`Cobrado $${deuda.toLocaleString()} de ${cliente.nombre}`);
+    render();
+  }
+}
+
+function registrarCargaStock(usuario, estilo, cantidad, tipo) {
+  state.historialStock.push({
+    usuario,
+    estilo,
+    cantidad,
+    tipo,
+    fecha: new Date().toLocaleString('es-AR')
+  });
+}
+
+function registrarTransferenciaHistorial(desde, hacia, estilo, cantidad, tipo) {
+  state.historialTransferencias.push({
+    desde,
+    hacia,
+    estilo,
+    cantidad,
+    tipo,
+    fecha: new Date().toLocaleString('es-AR')
+  });
+}
+
+// ===== FUNCIONES DE GUARDADO =====
+async function guardarDatos() {
+  localStorage.setItem('profeta_data', JSON.stringify(state));
+}
+
+async function cargarDatos() {
+  const data = localStorage.getItem('profeta_data');
+  if (data) Object.assign(state, JSON.parse(data));
+}
+
+async function guardarEnSheets() {
+  console.log('Guardando en Sheets...');
+}
+
+async function guardarVentasPendientesEnSheet() {
+  console.log('Guardando ventas pendientes...');
+}
+
+// ===== INICIALIZACIÓN =====
+document.addEventListener('DOMContentLoaded', async () => {
+  await cargarDatos();
+  render();
+});
+
 function render() {
   renderStockGeneral();
   renderVentasGeneral();
