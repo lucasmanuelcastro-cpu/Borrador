@@ -170,3 +170,10 @@ function guardarEnSheets() {
     .then(res => alert("✅ Datos guardados en Google Sheets"))
     .catch(err => alert("❌ Error al guardar: " + err));
 }
+// Después de stockGeneral: {},
+stockGeneralSinEtiqueta: {},
+
+// Y en cada usuario agregá stockSinEtiqueta:
+Julian: { stock: {}, stockSinEtiqueta: {}, ventas: [] },
+Matias: { stock: {}, stockSinEtiqueta: {}, ventas: [] },
+Lucas: { stock: {}, stockSinEtiqueta: {}, ventas: [] },
