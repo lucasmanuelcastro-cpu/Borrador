@@ -548,4 +548,4 @@ function renderTransferencia() {
       <h2>📦 Transferencia de Stock entre Usuarios</h2>
       <div class="flex" style="flex-wrap: wrap;">
         <select onchange="setState(p => { p.transferDesde = this.value; return p; })" style="width: auto;">
-          ${Object.keys(state.usuarios).map(u => `<option ${state.transferDesde === u? 'selected' : ''} value="${u}">${
+          ${Object.keys(state.usuarios).map(u => `<option ${state.transferDesde === u? 'selected' : ''} value="${u}">${}
