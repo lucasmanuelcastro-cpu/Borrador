@@ -12,6 +12,20 @@ function render() {
 }
 
 // 1. STOCK Y POPULARIDAD
+/**
+ * UI.JS - Control de la interfaz visual
+ */
+
+function render() {
+  renderStockGeneral();
+  renderVentasGeneral();
+  renderClientesGlobales();
+  renderTransferencia();
+  renderUsuarios();
+  renderPanelUsuario();
+}
+
+// 1. STOCK Y POPULARIDAD
 function renderStockGeneral() {
   const container = document.getElementById("stock-general-section");
   const stats = getEstadisticasVentas();
@@ -58,6 +72,453 @@ function renderStockGeneral() {
     </div>`;
 }
 
+// 2. VENTAS GENERALES
+function renderVentasGeneral() {
+  const container = document.getElementById("ventas-general-section");
+  const dineroEfectivo = getTotalVentasPorMetodo("efectivo");
+  const dineroTransferencia = getTotalVentasPorMetodo("transferencia");
+  const dineroTotal = getTotalVentasDinero();
+  const totalProfeta = getGananciaTotalProfeta();
+  const todasLasVentas = getVentasGenerales();
+
+  container.innerHTML = `
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div class="card" style="border-left: 4px solid #059669;">
+        <h2>💵 Dinero Ingresado (Efectivo)</h2>
+        <p class="big-number" style="color: #059669;">$${dineroEfectivo.toLocaleString()}</p>
+        <small>Ventas cobradas en efectivo</small>
+      </div>
+      <div class="card" style="border-left: 4px solid #2563eb;">
+        <h2>🏦 Dinero Ingresado (Transferencia)</h2>
+        <p class="big-number" style="color: #2563eb;">$${dineroTransferencia.toLocaleString()}</p>
+        <small>Ventas cobradas por transferencia</small>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+      <div class="card" style="border-left: 4px solid #3b82f6;">
+        <h2>💰 Total Ingresado</h2>
+        <p class="big-number" style="color: #3b82f6;">$${dineroTotal.toLocaleString()}</p>
+        <small>Efectivo + Transferencia</small>
+      </div>
+      <div class="card">
+        <h2>👑 Para El Profeta (Total)</h2>
+        <p class="big-number" style="color: #059669;">$${totalProfeta.toLocaleString()}</p>
+        <small>Costo + 50% Ganancia generada</small>
+      </div>
+    </div>
+
+    <!-- HISTORIAL GLOBAL DE TODAS LAS VENTAS -->
+    <div class="card" style="margin-top: 20px; border-left: 4px solid #7c3aed;">
+      <h2>📋 Historial Global (${todasLasVentas.length} ventas)</h2>
+      <div style="max-height: 300px; overflow-y: auto; margin-top: 10px;">
+        ${todasLasVentas.length === 0
+          ? '<p style="color:gray;">No hay ventas registradas aún.</p>'
+          : [...todasLasVentas].reverse().map(v => {
+              // Identificar vendedor: viene del Sheet como propiedad, o buscamos en state
+              const vendedor = v.vendedor || Object.keys(state.usuarios).find(u =>
+                state.usuarios[u].ventas.some(vv => vv === v)
+              ) || '—';
+              return `
+            <div style="border-bottom: 1px solid #f3f4f6; padding: 8px 0; font-size: 0.88em;">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+                <span><b>👤 ${v.cliente || 'Consumidor Final'}</b>
+                  <span style="margin-left:8px; background:#ede9fe; color:#7c3aed; border-radius:6px; padding:1px 7px; font-size:0.85em;">
+                    ${vendedor}
+                  </span>
+                </span>
+                <small style="color:#64748b;">📅 ${v.fecha || ''}</small>
+              </div>
+              <div style="color:#555; margin: 3px 0;">
+                ${Object.entries(v.estilos || {}).filter(([,c]) => Number(c) > 0).map(([e,c]) => `${c} ${e}`).join(', ') || '—'}
+                <b style="color:#1e40af; margin-left:6px;">(${Object.values(v.estilos || {}).reduce((a,b) => a+(Number(b)||0), 0)} latas)</b>
+              </div>
+              <div style="display:flex; gap:12px; flex-wrap:wrap; color:#374151;">
+                <span>💵 $${(v.totalCobrado||0).toLocaleString()}</span>
+                <span>Comisión: $${(v.comision||0).toLocaleString()}</span>
+                <span>👑 Profeta: $${(v.paraProfeta||0).toLocaleString()}</span>
+              </div>
+            </div>`;}).join("")
+        }
+      </div>
+    </div>`;
+}
+
+// 3. CARTERA DE CLIENTES
+function renderClientesGlobales() {
+  const container = document.getElementById("clientes-section");
+  if (!container) return;
+  const deudores = state.clientesGlobales.filter(c => (c.deuda - c.pagado) > 0);
+  const deudaTotal = deudores.reduce((acc, c) => acc + (c.deuda - c.pagado), 0);
+  container.innerHTML = `
+    <div class="card" style="border-left: 5px solid #ef4444;">
+      <div class="flex space-between">
+        <h2>👥 Cartera de Clientes (Deudores)</h2>
+        <b style="color: #ef4444;">Deuda Total: $${deudaTotal.toLocaleString()}</b>
+      </div>
+      <div style="max-height: 250px; overflow-y: auto; margin-top: 10px;">
+        ${deudores.length === 0 ? '<p>No hay deudas pendientes</p>' :
+          deudores.map((c) => {
+            const idx = state.clientesGlobales.indexOf(c);
+            return `
+            <div style="padding: 8px 0; border-bottom: 1px solid #eee;">
+              <div class="flex space-between" style="flex-wrap: wrap; gap: 6px; align-items: center;">
+                <span><b>${c.nombre}</b> (Debe: $${(c.deuda - c.pagado).toLocaleString()})</span>
+                <div style="display:flex; gap:6px; align-items:center;">
+                  <select id="metodo-cobro-${idx}" style="padding:4px 8px; border-radius:8px; border:1px solid #d1d5db; width:auto; margin-bottom:0;">
+                    <option value="efectivo">💵 Efectivo</option>
+                    <option value="transferencia">🏦 Transferencia</option>
+                  </select>
+                  <button onclick="registrarPagoCliente(${idx}, document.getElementById('metodo-cobro-${idx}').value)" style="background:#059669; padding:4px 10px;">Cobrar</button>
+                </div>
+              </div>
+            </div>`;
+          }).join("")}
+      </div>
+    </div>`;
+}
+
+// 4. PANEL DE USUARIO
+function renderPanelUsuario() {
+  const container = document.getElementById("panel-usuario-container");
+  if (!state.usuarioActivo) { container.innerHTML = ""; return; }
+  const usuario = state.usuarios[state.usuarioActivo];
+  const preview = calcularPreview();
+  const totalLatas = Object.values(state.ventaActual).reduce((a, b) => a + (Number(b) || 0), 0);
+  const precioUnitario = state.precioUnitario || "";
+  const totalCobrado = totalLatas > 0 && precioUnitario ? totalLatas * Number(precioUnitario) : 0;
+
+  container.innerHTML = `
+    <div class="panel-usuario card">
+      <h1 style="border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">Panel de ${state.usuarioActivo}</h1>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+
+        <!-- STOCK PROPIO -->
+        <div>
+          <h3>📦 Stock Propio</h3>
+          ${estilosBase.map(e => `
+            <div class="flex space-between" style="margin-bottom: 5px; padding: 6px 8px; background: #f8fafc; border-radius: 8px;">
+              <span>${e}</span>
+              <b style="color: ${(usuario.stock[e] || 0) < 0 ? '#ef4444' : '#1e40af'};">${usuario.stock[e] || 0} un.</b>
+            </div>`).join("")}
+        </div>
+
+        <!-- AGREGAR STOCK -->
+        <div>
+          <h3>➕ Agregar Stock</h3>
+          ${estilosBase.map(e => `
+            <div class="flex space-between" style="margin-bottom: 5px;">
+              <span>${e}</span>
+              <input type="number" data-agregar="${e}" placeholder="0" style="width: 80px;">
+            </div>`).join("")}
+          <button id="btn-agregar-stock" style="width:100%; margin-top:10px; background:#059669;">✅ Sumar al Stock</button>
+          <button id="btn-reset-stock" style="width:100%; margin-top:6px; background:#ef4444;">Reset Stock</button>
+        </div>
+
+        <!-- REGISTRAR VENTA -->
+        <div>
+          <h3>🛒 Registrar Venta</h3>
+
+          <!-- CLIENTE CON AUTOCOMPLETADO -->
+          <div style="position: relative; margin-bottom: 10px;">
+            <input type="text" id="cliente-nombre" placeholder="Nombre Cliente (Opcional)"
+              value="${state.clienteNombre}" autocomplete="off" style="margin-bottom: 0; width: 100%;">
+            <div id="sugerencias-cliente" style="
+              position: absolute; top: 100%; left: 0; right: 0;
+              background: white; border: 1px solid #d1d5db; border-top: none;
+              border-radius: 0 0 8px 8px; max-height: 160px; overflow-y: auto;
+              z-index: 999; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            "></div>
+          </div>
+
+          <!-- ESTILOS -->
+          ${estilosBase.map(e => `
+            <div class="flex space-between" style="margin-bottom: 5px;">
+              <span>${e}</span>
+              <input type="number" data-venta="${e}" value="${state.ventaActual[e] || ""}" placeholder="0" style="width: 80px;">
+            </div>`).join("")}
+
+          <!-- ALQUILER BARRIL -->
+          <input type="text" id="alquiler-barril" placeholder="Alquiler barril (ej: HONEY 30Lts)"
+            value="${state.alquilerBarril || ""}" style="margin-top: 6px;">
+
+          <!-- TOTAL LATAS + TIPO LATA + PRECIO UNITARIO -->
+          <div style="margin-top: 10px; background: #1e293b; border-radius: 10px; padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <span style="color: #94a3b8; font-size: 0.9em;">Total latas:</span>
+              <b style="color: #f1f5f9; font-size: 1.4em;">${totalLatas}</b>
+            </div>
+
+            <!-- TOGGLE TIPO LATA -->
+            <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+              <button
+                onclick="setState(p => { p.tipoLata = 'conEtiqueta'; return p; })"
+                style="flex:1; padding: 8px 4px; border-radius: 8px;
+                       border: 2px solid ${state.tipoLata !== 'sinEtiqueta' ? '#f59e0b' : '#334155'};
+                       background: ${state.tipoLata !== 'sinEtiqueta' ? '#f59e0b' : '#0f172a'};
+                       color: ${state.tipoLata !== 'sinEtiqueta' ? '#1e293b' : '#64748b'};
+                       font-weight: bold; font-size: 0.8em; cursor: pointer; line-height: 1.4;">
+                🏷️ Con Etiqueta<br><span style="font-size:0.85em; font-weight:normal;">$1.750</span>
+              </button>
+              <button
+                onclick="setState(p => { p.tipoLata = 'sinEtiqueta'; return p; })"
+                style="flex:1; padding: 8px 4px; border-radius: 8px;
+                       border: 2px solid ${state.tipoLata === 'sinEtiqueta' ? '#60a5fa' : '#334155'};
+                       background: ${state.tipoLata === 'sinEtiqueta' ? '#60a5fa' : '#0f172a'};
+                       color: ${state.tipoLata === 'sinEtiqueta' ? '#1e293b' : '#64748b'};
+                       font-weight: bold; font-size: 0.8em; cursor: pointer; line-height: 1.4;">
+                📦 Sin Etiqueta<br><span style="font-size:0.85em; font-weight:normal;">$1.450</span>
+              </button>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <label style="color: #94a3b8; font-size: 0.9em; white-space: nowrap;">Precio unitario $</label>
+              <input type="number" id="precio-unitario" value="${precioUnitario}"
+                placeholder="ej: 2400"
+                style="flex:1; background:#0f172a; color:#f1f5f9; border:1px solid #334155;
+                       border-radius:6px; padding:6px 10px; font-size:1em; margin-bottom:0;">
+            </div>
+            <div style="text-align: right; margin-top: 8px; padding-top: 8px; border-top: 1px solid #334155;">
+              <span style="color: #94a3b8; font-size: 0.85em;">Total a cobrar:</span>
+              <b style="color: #34d399; font-size: 1.3em; margin-left: 8px;" data-total-display>
+                $${totalCobrado > 0 ? totalCobrado.toLocaleString() : "—"}
+              </b>
+            </div>
+          </div>
+
+          <!-- PREVIEW -->
+          <div style="background:#fef3c7; border: 1px solid #f59e0b; border-radius: 10px; padding: 12px; margin-top: 10px;">
+            <h4 style="margin: 0 0 8px 0; color: #92400e;">📊 Vista Previa Profeta</h4>
+            <div style="display:flex; justify-content:space-between; margin: 4px 0; font-size:0.9em;">
+              <span style="color:#78350f;">Costo (${state.tipoLata === 'sinEtiqueta' ? 'sin etiqueta' : 'con etiqueta'}):</span>
+              <b style="color:#92400e;">$${preview.costoTotal.toLocaleString()}</b>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin: 4px 0; font-size:0.9em;">
+              <span style="color:#78350f;">Comisión (50%):</span>
+              <b style="color:${preview.comision > 0 ? '#059669' : '#92400e'};">
+                ${preview.comision > 0 ? '$' + preview.comision.toLocaleString() : '— (ingresá precio)'}
+              </b>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid #f59e0b;">
+              <span style="color:#78350f; font-weight:bold;">Total a Rendir:</span>
+              <b style="color:#b45309; font-size:1.1em;">$${preview.paraProfeta.toLocaleString()}</b>
+            </div>
+            ${preview.gananciaBruta > 0 ? `<div style="margin-top:6px; font-size:0.8em; color:#78350f; text-align:right;">Ganancia bruta: $${preview.gananciaBruta.toLocaleString()}</div>` : ''}
+          </div>
+
+          <!-- BOTÓN REGISTRAR -->
+          <button id="btn-registrar" style="width:100%; margin-top:10px; background:#1e40af;">
+            ✅ Registrar Venta
+          </button>
+        </div>
+      </div>
+
+      <hr>
+      <div class="flex space-between">
+        <h3>📜 Historial de Ventas</h3>
+        <div>
+          <button id="btn-guardar" style="background:#059669;">💾 Guardar en Sheet</button>
+        </div>
+      </div>
+      <div id="historial-lista" style="margin-top: 15px;">
+        ${usuario.ventas.length === 0 ? '<p>No hay ventas registradas</p>' :
+          [...usuario.ventas].reverse().map((v, i) => `
+          <div style="border-bottom:1px solid #eee; padding:10px 0; font-size: 0.9em;">
+            <div class="flex space-between" style="align-items: flex-start;">
+              <div style="flex:1;">
+                <div class="flex space-between">
+                  <b>👤 ${v.cliente || 'Consumidor Final'}</b>
+                  <small>📅 ${v.fecha || ''}</small>
+                </div>
+                <div style="color: #666; margin: 4px 0;">
+                  ${Object.entries(v.estilos || {}).filter(([,c]) => Number(c) > 0).map(([e,c]) => `${c} ${e}`).join(", ") || '—'}
+                  <b style="color:#1e40af;">(${Object.values(v.estilos || {}).reduce((a,b) => a+(Number(b)||0),0)} latas)</b>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                  <span>💵 $${(v.totalCobrado||0).toLocaleString()}</span>
+                  <span style="color:#059669;">Comisión: $${(v.comision||0).toLocaleString()}</span>
+                  <span style="color:#b45309;">👑 Profeta: $${(v.paraProfeta||0).toLocaleString()}</span>
+                </div>
+              </div>
+              <button onclick="borrarVentaIndividual(${usuario.ventas.length - 1 - i})" title="Borrar esta venta"
+                style="margin-left:12px; background:#ef4444; padding:4px 10px; font-size:0.85em; border-radius:6px; flex-shrink:0; cursor:pointer;">
+                🗑️
+              </button>
+            </div>
+          </div>`).join("")}
+      </div>
+    </div>`;
+
+  bindPanelEventos();
+  bindAutocompletadoCliente();
+  bindPrecioUnitario();
+}
+
+// 5. PRECIO UNITARIO — actualiza totalCobradoInput en tiempo real
+function bindPrecioUnitario() {
+  const input = document.getElementById("precio-unitario");
+  if (!input) return;
+  input.addEventListener("input", () => {
+    const precio = Number(input.value) || 0;
+    state.precioUnitario = input.value;
+    const totalLatas = Object.values(state.ventaActual).reduce((a, b) => a + (Number(b) || 0), 0);
+    const total = totalLatas * precio;
+    state.totalCobradoInput = total > 0 ? String(total) : "";
+    // Actualizar display sin re-renderizar todo
+    const display = document.querySelector("[data-total-display]");
+    if (display) display.textContent = total > 0 ? "$" + total.toLocaleString() : "$—";
+  });
+}
+
+// 6. AUTOCOMPLETADO CLIENTE
+function bindAutocompletadoCliente() {
+  const input = document.getElementById("cliente-nombre");
+  const sugerencias = document.getElementById("sugerencias-cliente");
+  if (!input || !sugerencias) return;
+
+  input.addEventListener("input", () => {
+    const val = input.value.trim().toLowerCase();
+    state.clienteNombre = input.value;
+    if (val.length < 1) { sugerencias.style.display = "none"; return; }
+
+    const todos = [...new Set([
+      ...clientesHistoricos,
+      ...state.clientesGlobales.map(c => c.nombre)
+    ])];
+    const filtrados = todos.filter(n => n.toLowerCase().includes(val)).slice(0, 8);
+
+    if (!filtrados.length) { sugerencias.style.display = "none"; return; }
+
+    sugerencias.innerHTML = filtrados.map(nombre => `
+      <div onclick="seleccionarCliente('${nombre.replace(/'/g, "\\'")}')"
+        style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f3f4f6; font-size: 0.9em;"
+        onmouseover="this.style.background='#eff6ff'"
+        onmouseout="this.style.background='white'">
+        👤 ${nombre}
+      </div>`).join("");
+    sugerencias.style.display = "block";
+  });
+
+  input.addEventListener("blur", () => setTimeout(() => { sugerencias.style.display = "none"; }, 200));
+  input.addEventListener("focus", () => { if (input.value.trim().length > 0) input.dispatchEvent(new Event("input")); });
+}
+
+function seleccionarCliente(nombre) {
+  state.clienteNombre = nombre;
+  const input = document.getElementById("cliente-nombre");
+  if (input) input.value = nombre;
+  const sugerencias = document.getElementById("sugerencias-cliente");
+  if (sugerencias) sugerencias.style.display = "none";
+
+  const ventas = Object.values(state.usuarios).flatMap(u => u.ventas);
+  const ventasCliente = ventas.filter(v => v.cliente && v.cliente.toLowerCase() === nombre.toLowerCase());
+  if (ventasCliente.length > 0) {
+    const ultima = ventasCliente[ventasCliente.length - 1];
+    setState(p => { p.ventaActual = { ...ultima.estilos }; return p; });
+  }
+}
+
+// 7. EVENTOS
+function bindPanelEventos() {
+  document.querySelectorAll("[data-stock]").forEach(i =>
+    i.onchange = (e) => modificarStockDirecto(state.usuarioActivo, e.target.dataset.stock, e.target.value));
+
+  document.querySelectorAll("[data-venta]").forEach(i =>
+    i.onchange = (e) => {
+      setState(p => { p.ventaActual[e.target.dataset.venta] = e.target.value; return p; });
+    });
+
+  document.getElementById("cliente-nombre").oninput = (e) => { state.clienteNombre = e.target.value; };
+  document.getElementById("alquiler-barril").oninput = (e) => { state.alquilerBarril = e.target.value; };
+
+  document.getElementById("btn-registrar").onclick = () => {
+    // Calcular total desde precio unitario antes de registrar
+    const precio = Number(state.precioUnitario) || 0;
+    const totalLatas = Object.values(state.ventaActual).reduce((a, b) => a + (Number(b) || 0), 0);
+    if (precio > 0 && totalLatas > 0) {
+      state.totalCobradoInput = String(totalLatas * precio);
+    }
+    registrarVentaLocal();
+    state.precioUnitario = "";
+  };
+
+  document.getElementById("btn-guardar").onclick = async function() {
+    this.disabled = true;
+    this.textContent = "⏳ Guardando...";
+    await guardarDatos();
+    await guardarEnSheets();
+    await guardarVentasPendientesEnSheet();
+    this.disabled = false;
+    this.textContent = "💾 Guardar en Sheet";
+  };
+
+  document.getElementById("btn-ver-clientes").onclick = mostrarTodosLosClientes;
+
+  document.getElementById("btn-agregar-stock").onclick = () => {
+    document.querySelectorAll("[data-agregar]").forEach(input => {
+      const estilo = input.dataset.agregar;
+      const cantidad = Number(input.value);
+      if (!isNaN(cantidad) && input.value.trim() !== "" && cantidad !== 0) {
+        modificarStockDirecto(state.usuarioActivo, estilo, (state.usuarios[state.usuarioActivo].stock[estilo] || 0) + cantidad);
+        input.value = "";
+      }
+    });
+  };
+
+  document.getElementById("btn-reset-stock").onclick = () => {
+    if (confirm("¿Resetear todo el stock a 0?")) {
+      setState(p => {
+        estilosBase.forEach(e => { p.usuarios[p.usuarioActivo].stock[e] = 0; });
+        return p;
+      });
+    }
+  };
+}
+
+function renderUsuarios() {
+  const container = document.getElementById("usuarios-section");
+  container.innerHTML = Object.keys(state.usuarios).map(u => `
+    <button onclick="setState(p => { p.usuarioActivo = '${u}'; return p; })"
+      style="background: ${state.usuarioActivo === u ? '#1e40af' : '#3b82f6'}; margin: 5px;">
+      Panel ${u}
+    </button>`).join("");
+}
+
+function renderTransferencia() {
+  const container = document.getElementById("transferencia-section");
+  container.innerHTML = `
+    <div class="card">
+      <h2>📦 Transferencia de Stock entre Usuarios</h2>
+      <div class="flex" style="flex-wrap: wrap;">
+        <select onchange="setState(p => { p.transferDesde = this.value; return p; })" style="width: auto;">
+          ${Object.keys(state.usuarios).map(u => `<option ${state.transferDesde === u ? 'selected' : ''} value="${u}">${u}</option>`)}
+        </select>
+        <span> → </span>
+        <select onchange="setState(p => { p.transferHacia = this.value; return p; })" style="width: auto;">
+          ${Object.keys(state.usuarios).map(u => `<option ${state.transferHacia === u ? 'selected' : ''} value="${u}">${u}</option>`)}
+        </select>
+        <select onchange="setState(p => { p.transferEstilo = this.value; return p; })" style="width: auto;">
+          ${estilosBase.map(e => `<option ${state.transferEstilo === e ? 'selected' : ''} value="${e}">${e}</option>`)}
+        </select>
+        <input type="number" placeholder="Cant" oninput="state.transferCantidad = this.value" style="width: 70px; margin-bottom:0;">
+        <button onclick="transferirStock()">Pasar Stock</button>
+      </div>
+    </div>`;
+}
+
+function mostrarTodosLosClientes() {
+  const div = document.getElementById("lista-clientes");
+  if (!state.clientesGlobales.length) { div.innerHTML = "<p>No hay clientes registrados</p>"; return; }
+  div.innerHTML = state.clientesGlobales.map((c, i) => `
+    <div>
+      ${c.nombre} — Deuda: $${c.deuda.toLocaleString()} | Pagado: $${c.pagado.toLocaleString()}
+      <button onclick="borrarCliente(${i})" style="margin-left:10px;background:#ef4444;">Borrar</button>
+    </div>`).join("");
+}
+
+function borrarCliente(index) {
+  setState(p => { p.clientesGlobales.splice(index, 1); return p; });
+  mostrarTodosLosClientes();
+}
 // 2. VENTAS GENERALES
 function renderVentasGeneral() {
   const container = document.getElementById("ventas-general-section");
