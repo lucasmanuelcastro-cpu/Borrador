@@ -247,3 +247,24 @@ async function cargarDatosDesdeSheet() {
     console.error("❌ Error de lectura:", error);
   }
 }
+function agregarStockDirecto(estilo, conEtiqueta) {
+  const input = document.querySelector(`[data-agregar="${estilo}"]`);
+  if (!input ||!input.value || input.value.trim() === "") {
+    alert("Ingrese cantidad");
+    return;
+  }
+
+  const cantidad = Number(input.value);
+  if (isNaN(cantidad) || cantidad === 0) {
+    alert("Cantidad inválida");
+    return;
+  }
+
+  setState((prev) => {
+    const target = conEtiqueta? prev.usuarios[prev.usuarioActivo].stock : prev.usuarios[prev.usuarioActivo].stockSinEtiqueta;
+    target[estilo] = (target[estilo] || 0) + cantidad;
+    return prev;
+  });
+
+  input.value = "";
+}
