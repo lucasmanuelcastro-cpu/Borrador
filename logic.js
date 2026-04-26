@@ -59,9 +59,14 @@ function registrarVentaLocal() {
       }
     }
 
-    Object.entries(prev.ventaActual).forEach(([estilo, cant]) => {
-      usuario.stock[estilo] = (usuario.stock[estilo] || 0) - (Number(cant) || 0);
-    });
+  Object.entries(prev.ventaActual).forEach(([estilo, cant]) => {
+  if (prev.tipoLata === 'sinEtiqueta') {
+    if (!usuario.stockSinEtiqueta) usuario.stockSinEtiqueta = {};
+    usuario.stockSinEtiqueta[estilo] = (usuario.stockSinEtiqueta[estilo] || 0) - (Number(cant) || 0);
+  } else {
+    usuario.stock[estilo] = (usuario.stock[estilo] || 0) - (Number(cant) || 0);
+  }
+});
 
     prev.ventaActual = {};
     prev.clienteNombre = "";
