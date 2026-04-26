@@ -16,7 +16,7 @@ function renderStockGeneral() {
   const container = document.getElementById("stock-general-section");
   const stats = getEstadisticasVentas();
   container.innerHTML = `
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
       <div class="card">
         <h2>Stock General (Disponible)</h2>
         <table style="width:100%; border-collapse: collapse; margin-top:10px;">
