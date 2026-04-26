@@ -42,15 +42,29 @@ function renderStockGeneral() {
               </tr>`;
             }).join("")}
           </tbody>
+          <tfoot>
+            <tr style="border-top: 2px solid #3b82f6; background: #eff6ff;">
+              <td style="padding: 8px 4px; font-weight: bold;">TOTAL</td>
+              <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: #3b82f6;">
+                ${estilosBase.reduce((sum, e) => sum + Object.values(state.usuarios).reduce((s, u) => s + (u.stock[e] || 0), 0), 0)}
+              </td>
+              <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: #6b7280;">
+                ${estilosBase.reduce((sum, e) => sum + Object.values(state.usuarios).reduce((s, u) => s + ((u.stockSinEtiqueta && u.stockSinEtiqueta[e]) || 0), 0), 0)}
+              </td>
+              <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: #1e40af;">
+                ${estilosBase.reduce((sum, e) => sum + Object.values(state.usuarios).reduce((s, u) => s + (u.stock[e] || 0) + ((u.stockSinEtiqueta && u.stockSinEtiqueta[e]) || 0), 0), 0)}
+              </td>
+            </tr>
+          </tfoot>
         </table>
       </div>
       <div class="card" style="background: #f8fafc; border: 1px solid #e2e8f0;">
         <h2>Popularidad (% Ventas)</h2>
         ${Object.entries(stats.totalesPorEstilo).length === 0
-        ? '<p style="color:gray; font-size: 0.9em;">Esperando primeras ventas...</p>'
+       ? '<p style="color:gray; font-size: 0.9em;">Esperando primeras ventas...</p>'
           : Object.entries(stats.totalesPorEstilo)
-            .sort((a, b) => b[1] - a[1])
-            .map(([estilo, cant]) => {
+           .sort((a, b) => b[1] - a[1])
+           .map(([estilo, cant]) => {
                 const porcentaje = ((cant / stats.granTotalLatas) * 100).toFixed(0);
                 return `
                   <div class="flex space-between" style="padding: 4px 0; border-bottom: 1px solid #e2e8f0;">
@@ -101,12 +115,11 @@ function renderVentasGeneral() {
       </div>
     </div>
 
-    <!-- HISTORIAL GLOBAL DE TODAS LAS VENTAS -->
     <div class="card" style="margin-top: 20px; border-left: 4px solid #7c3aed;">
       <h2>📋 Historial Global (${todasLasVentas.length} ventas)</h2>
       <div style="max-height: 300px; overflow-y: auto; margin-top: 10px;">
         ${todasLasVentas.length === 0
-        ? '<p style="color:gray;">No hay ventas registradas aún.</p>'
+       ? '<p style="color:gray;">No hay ventas registradas aún.</p>'
           : [...todasLasVentas].reverse().map(v => {
               const vendedor = v.vendedor || Object.keys(state.usuarios).find(u =>
                 state.usuarios[u].ventas.some(vv => vv === v)
@@ -170,7 +183,7 @@ function renderClientesGlobales() {
     </div>`;
 }
 
-// 4. PANEL DE USUARIO
+// 4. PANEL DE USUARIO - NUEVO DISEÑO
 function renderPanelUsuario() {
   const container = document.getElementById("panel-usuario-container");
   if (!state.usuarioActivo) { container.innerHTML = ""; return; }
@@ -183,37 +196,65 @@ function renderPanelUsuario() {
   container.innerHTML = `
     <div class="panel-usuario card">
       <h1 style="border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">Panel de ${state.usuarioActivo}</h1>
-      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
 
-        <!-- STOCK PROPIO -->
+        <!-- STOCK PROPIO + AGREGAR -->
         <div>
-                <!-- AGREGAR STOCK -->
-        <div>
-          <h3>➕ Agregar Stock</h3>
-          ${estilosBase.map(e => `
-            <div class="flex space-between" style="margin-bottom: 5px; align-items: center;">
-              <span>${e}</span>
-              <div style="display:flex; gap:3px; align-items:center;">
-                <input type="number" data-agregar="${e}" placeholder="0" style="width: 60px; margin-bottom:0;">
-                <div style="display:flex; flex-direction:column; gap:1px;">
-                  <button onclick="agregarStockDirecto('${e}', true)"
-                    style="padding:2px 6px; font-size:0.7em; background:#3b82f6; min-width:24px; border-radius:3px; margin:0; color:white; border:none; cursor:pointer;">C</button>
-                  <button onclick="agregarStockDirecto('${e}', false)"
-                    style="padding:2px 6px; font-size:0.7em; background:#6b7280; min-width:24px; border-radius:3px; margin:0; color:white; border:none; cursor:pointer;">S</button>
-                </div>
-              </div>
-            </div>`).join("")}
-          <small style="display:block; margin:6px 0; color:#64748b; font-size:0.75em;">
-            <b>C:</b> Con etiqueta | <b>S:</b> Sin etiqueta
-          </small>
-          <button id="btn-agregar-stock" style="width:100%; margin-top:10px; background:#059669;">✅ Sumar al Stock</button>
-          <button id="btn-reset-stock" style="width:100%; margin-top:6px; background:#ef4444;">Reset Stock</button>
+          <h3>📦 Stock Propio - Agregar</h3>
+          <table style="width:100%; border-collapse: collapse; margin-top:10px; background: #f8fafc; border-radius: 8px;">
+            <thead>
+              <tr style="border-bottom: 2px solid #e5e7eb; text-align: left;">
+                <th style="padding: 8px 4px; font-size: 0.9em;">Estilo</th>
+                <th style="padding: 8px 4px; text-align: center; font-size: 0.9em; color: #3b82f6;">Con Etiq</th>
+                <th style="padding: 8px 4px; text-align: center; font-size: 0.9em; color: #6b7280;">Sin Etiq</th>
+                <th style="padding: 8px 4px; text-align: center; font-size: 0.9em;">Total</th>
+                <th style="padding: 8px 4px; text-align: center; font-size: 0.9em;">Agregar</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${estilosBase.map(e => {
+                const conEtiq = usuario.stock[e] || 0;
+                const sinEtiq = (usuario.stockSinEtiqueta && usuario.stockSinEtiqueta[e]) || 0;
+                const total = conEtiq + sinEtiq;
+                return `
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                  <td style="padding: 6px 4px; font-weight: 500;">${e}</td>
+                  <td style="padding: 6px 4px; text-align: center;">${conEtiq}</td>
+                  <td style="padding: 6px 4px; text-align: center;">${sinEtiq}</td>
+                  <td style="padding: 6px 4px; text-align: center; font-weight: bold; color: ${total < 0? '#ef4444' : '#1e40af'};">${total}</td>
+                  <td style="padding: 6px 4px; text-align: center;">
+                    <input type="number" data-agregar="${e}" placeholder="0" style="width: 60px; margin-bottom:0; padding: 4px; border: 1px solid #d1d5db; border-radius: 4px;">
+                  </td>
+                </tr>`;
+              }).join("")}
+            </tbody>
+            <tfoot>
+              <tr style="border-top: 2px solid #3b82f6; background: #eff6ff;">
+                <td style="padding: 8px 4px; font-weight: bold;">TOTAL</td>
+                <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: #3b82f6;">
+                  ${estilosBase.reduce((sum, e) => sum + (usuario.stock[e] || 0), 0)}
+                </td>
+                <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: #6b7280;">
+                  ${estilosBase.reduce((sum, e) => sum + ((usuario.stockSinEtiqueta && usuario.stockSinEtiqueta[e]) || 0), 0)}
+                </td>
+                <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: #1e40af;">
+                  ${estilosBase.reduce((sum, e) => sum + (usuario.stock[e] || 0) + ((usuario.stockSinEtiqueta && usuario.stockSinEtiqueta[e]) || 0), 0)}
+                </td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
+            <button id="btn-agregar-stock" style="background:#059669; padding: 10px;">✅ Sumar Con Etiqueta</button>
+            <button id="btn-agregar-stock-sin-etiqueta" style="background:#6b7280; padding: 10px;">📦 Sumar Sin Etiqueta</button>
+          </div>
+          <button id="btn-reset-stock" style="width:100%; margin-top:8px; background:#ef4444; padding: 10px;">Reset Stock Total</button>
         </div>
+
         <!-- REGISTRAR VENTA -->
         <div>
           <h3>🛒 Registrar Venta</h3>
 
-          <!-- CLIENTE CON AUTOCOMPLETADO -->
           <div style="position: relative; margin-bottom: 10px;">
             <input type="text" id="cliente-nombre" placeholder="Nombre Cliente (Opcional)"
               value="${state.clienteNombre}" autocomplete="off" style="margin-bottom: 0; width: 100%;">
@@ -225,25 +266,21 @@ function renderPanelUsuario() {
             "></div>
           </div>
 
-          <!-- ESTILOS -->
           ${estilosBase.map(e => `
             <div class="flex space-between" style="margin-bottom: 5px;">
               <span>${e}</span>
               <input type="number" data-venta="${e}" value="${state.ventaActual[e] || ""}" placeholder="0" style="width: 80px;">
             </div>`).join("")}
 
-          <!-- ALQUILER BARRIL -->
           <input type="text" id="alquiler-barril" placeholder="Alquiler barril (ej: HONEY 30Lts)"
             value="${state.alquilerBarril || ""}" style="margin-top: 6px;">
 
-          <!-- TOTAL LATAS + TIPO LATA + PRECIO UNITARIO -->
           <div style="margin-top: 10px; background: #1e293b; border-radius: 10px; padding: 12px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
               <span style="color: #94a3b8; font-size: 0.9em;">Total latas:</span>
               <b style="color: #f1f5f9; font-size: 1.4em;">${totalLatas}</b>
             </div>
 
-            <!-- TOGGLE TIPO LATA -->
             <div style="display: flex; gap: 8px; margin-bottom: 10px;">
               <button
                 onclick="setState(p => { p.tipoLata = 'conEtiqueta'; return p; })"
@@ -280,7 +317,6 @@ function renderPanelUsuario() {
             </div>
           </div>
 
-          <!-- PREVIEW -->
           <div style="background:#fef3c7; border: 1px solid #f59e0b; border-radius: 10px; padding: 12px; margin-top: 10px;">
             <h4 style="margin: 0 0 8px 0; color: #92400e;">📊 Vista Previa Profeta</h4>
             <div style="display:flex; justify-content:space-between; margin: 4px 0; font-size:0.9em;">
@@ -300,7 +336,6 @@ function renderPanelUsuario() {
             ${preview.gananciaBruta > 0? `<div style="margin-top:6px; font-size:0.8em; color:#78350f; text-align:right;">Ganancia bruta: $${preview.gananciaBruta.toLocaleString()}</div>` : ''}
           </div>
 
-          <!-- BOTÓN REGISTRAR -->
           <button id="btn-registrar" style="width:100%; margin-top:10px; background:#1e40af;">
             ✅ Registrar Venta
           </button>
@@ -347,7 +382,7 @@ function renderPanelUsuario() {
   bindPrecioUnitario();
 }
 
-// 5. PRECIO UNITARIO — actualiza totalCobradoInput en tiempo real
+// 5. PRECIO UNITARIO
 function bindPrecioUnitario() {
   const input = document.getElementById("precio-unitario");
   if (!input) return;
@@ -374,8 +409,8 @@ function bindAutocompletadoCliente() {
     if (val.length < 1) { sugerencias.style.display = "none"; return; }
 
     const todos = [...new Set([
-    ...clientesHistoricos,
-    ...state.clientesGlobales.map(c => c.nombre)
+  ...clientesHistoricos,
+  ...state.clientesGlobales.map(c => c.nombre)
     ])];
     const filtrados = todos.filter(n => n.toLowerCase().includes(val)).slice(0, 8);
 
@@ -456,6 +491,27 @@ function bindPanelEventos() {
     });
   };
 
+  document.getElementById("btn-agregar-stock-sin-etiqueta").onclick = () => {
+    document.querySelectorAll("[data-agregar]").forEach(input => {
+      const estilo = input.dataset.agregar;
+      const cantidad = Number(input.value);
+      if (!isNaN(cantidad) && input.value.trim()!== "" && cantidad!== 0) {
+        setState((prev) => {
+          const usuario = prev.usuarios[prev.usuarioActivo];
+          if (!usuario.stockSinEtiqueta) {
+            usuario.stockSinEtiqueta = {
+              "BLONDE": 0, "IRISH RED": 0, "STOUT": 0,
+              "SESSION IPA": 0, "RED IPA": 0, "HONEY": 0
+            };
+          }
+          usuario.stockSinEtiqueta[estilo] = (usuario.stockSinEtiqueta[estilo] || 0) + cantidad;
+          return prev;
+        });
+        input.value = "";
+      }
+    });
+  };
+
   document.getElementById("btn-reset-stock").onclick = () => {
     if (confirm("¿Resetear todo el stock a 0?")) {
       setState(p => {
@@ -490,29 +546,4 @@ function renderTransferencia() {
           ${Object.keys(state.usuarios).map(u => `<option ${state.transferDesde === u? 'selected' : ''} value="${u}">${u}</option>`)}
         </select>
         <span> → </span>
-        <select onchange="setState(p => { p.transferHacia = this.value; return p; })" style="width: auto;">
-          ${Object.keys(state.usuarios).map(u => `<option ${state.transferHacia === u? 'selected' : ''} value="${u}">${u}</option>`)}
-        </select>
-        <select onchange="setState(p => { p.transferEstilo = this.value; return p; })" style="width: auto;">
-          ${estilosBase.map(e => `<option ${state.transferEstilo === e? 'selected' : ''} value="${e}">${e}</option>`)}
-        </select>
-        <input type="number" placeholder="Cant" oninput="state.transferCantidad = this.value" style="width: 70px; margin-bottom:0;">
-        <button onclick="transferirStock()">Pasar Stock</button>
-      </div>
-    </div>`;
-}
-
-function mostrarTodosLosClientes() {
-  const div = document.getElementById("lista-clientes");
-  if (!state.clientesGlobales.length) { div.innerHTML = "<p>No hay clientes registrados</p>"; return; }
-  div.innerHTML = state.clientesGlobales.map((c, i) => `
-    <div>
-      ${c.nombre} — Deuda: $${c.deuda.toLocaleString()} | Pagado: $${c.pagado.toLocaleString()}
-      <button onclick="borrarCliente(${i})" style="margin-left:10px;background:#ef4444;">Borrar</button>
-    </div>`).join("");
-}
-
-function borrarCliente(index) {
-  setState(p => { p.clientesGlobales.splice(index, 1); return p; });
-  mostrarTodosLosClientes();
-}
+        <select onchange="setState(p => { p.transferHacia = this.value; return p;
