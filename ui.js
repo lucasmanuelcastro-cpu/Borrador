@@ -187,14 +187,58 @@ function renderPanelUsuario() {
 
         <!-- STOCK PROPIO -->
         <div>
-          <h3>📦 Stock Propio</h3>
-          ${estilosBase.map(e => `
-            <div class="flex space-between" style="margin-bottom: 5px; padding: 6px 8px; background: #f8fafc; border-radius: 8px;">
-              <span>${e}</span>
-              <b style="color: ${(usuario.stock[e] || 0) < 0? '#ef4444' : '#1e40af'};">${usuario.stock[e] || 0} un.</b>
-            </div>`).join("")}
-        </div>
-
+          <!-- STOCK PROPIO + AGREGAR -->
+<div style="grid-column: span 2;">
+  <h3>📦 Stock Propio - Agregar</h3>
+  <table style="width:100%; border-collapse: collapse; margin-top:10px; background: #f8fafc; border-radius: 8px;">
+    <thead>
+      <tr style="border-bottom: 2px solid #e5e7eb; text-align: left;">
+        <th style="padding: 8px 4px; font-size: 0.9em;">Estilo</th>
+        <th style="padding: 8px 4px; text-align: center; font-size: 0.9em; color: #3b82f6;">Con Etiq</th>
+        <th style="padding: 8px 4px; text-align: center; font-size: 0.9em; color: #6b7280;">Sin Etiq</th>
+        <th style="padding: 8px 4px; text-align: center; font-size: 0.9em;">Total</th>
+        <th style="padding: 8px 4px; text-align: center; font-size: 0.9em;">Agregar</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${estilosBase.map(e => {
+        const conEtiq = usuario.stock[e] || 0;
+        const sinEtiq = (usuario.stockSinEtiqueta && usuario.stockSinEtiqueta[e]) || 0;
+        const total = conEtiq + sinEtiq;
+        return `
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 6px 4px; font-weight: 500;">${e}</td>
+          <td style="padding: 6px 4px; text-align: center;">${conEtiq}</td>
+          <td style="padding: 6px 4px; text-align: center;">${sinEtiq}</td>
+          <td style="padding: 6px 4px; text-align: center; font-weight: bold; color: ${total < 0? '#ef4444' : '#1e40af'};">${total}</td>
+          <td style="padding: 6px 4px; text-align: center;">
+            <input type="number" data-agregar="${e}" placeholder="0" style="width: 60px; margin-bottom:0; padding: 4px; border: 1px solid #d1d5db; border-radius: 4px;">
+          </td>
+        </tr>`;
+      }).join("")}
+    </tbody>
+    <tfoot>
+      <tr style="border-top: 2px solid #3b82f6; background: #eff6ff;">
+        <td style="padding: 8px 4px; font-weight: bold;">TOTAL</td>
+        <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: #3b82f6;">
+          ${estilosBase.reduce((sum, e) => sum + (usuario.stock[e] || 0), 0)}
+        </td>
+        <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: #6b7280;">
+          ${estilosBase.reduce((sum, e) => sum + ((usuario.stockSinEtiqueta && usuario.stockSinEtiqueta[e]) || 0), 0)}
+        </td>
+        <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: #1e40af;">
+          ${estilosBase.reduce((sum, e) => sum + (usuario.stock[e] || 0) + ((usuario.stockSinEtiqueta && usuario.stockSinEtiqueta[e]) || 0), 0)}
+        </td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px;">
+    <button id="btn-agregar-stock" style="background:#059669; padding: 10px;">✅ Sumar Con Etiqueta</button>
+    <button id="btn-agregar-stock-sin-etiqueta" style="background:#6b7280; padding: 10px;">📦 Sumar Sin Etiqueta</button>
+  </div>
+  <button id="btn-reset-stock" style="width:100%; margin-top:8px; background:#ef4444; padding: 10px;">Reset Stock Total</button>
+</div>
         <!-- AGREGAR STOCK -->
         <div>
           <h3>➕ Agregar Stock</h3>
