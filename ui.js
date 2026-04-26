@@ -466,16 +466,19 @@ function bindPanelEventos() {
     });
   };
 
-  document.getElementById("btn-reset-stock").onclick = () => {
-    if (confirm("¿Resetear todo el stock a 0?")) {
-      setState(p => {
-        estilosBase.forEach(e => { p.usuarios[p.usuarioActivo].stock[e] = 0; });
-        return p;
+document.getElementById("btn-reset-stock").onclick = () => {
+  if (confirm("¿Resetear todo el stock a 0?")) {
+    setState(p => {
+      estilosBase.forEach(e => {
+        p.usuarios[p.usuarioActivo].stock[e] = 0;
+        if (p.usuarios[p.usuarioActivo].stockSinEtiqueta) {
+          p.usuarios[p.usuarioActivo].stockSinEtiqueta[e] = 0; // ← Agregá esta línea
+        }
       });
-    }
-  };
-}
-
+      return p;
+    });
+  }
+};
 function renderUsuarios() {
   const container = document.getElementById("usuarios-section");
   container.innerHTML = Object.keys(state.usuarios).map(u => `
