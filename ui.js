@@ -12,6 +12,7 @@ function render() {
 }
 
 // 1. STOCK Y POPULARIDAD
+// 1. STOCK Y POPULARIDAD
 function renderStockGeneral() {
   const container = document.getElementById("stock-general-section");
   const stats = getEstadisticasVentas();
@@ -19,20 +20,30 @@ function renderStockGeneral() {
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
       <div class="card">
         <h2>Stock General (Disponible)</h2>
-        ${estilosBase.map(e => {
-          const conEtiq = Object.values(state.usuarios).reduce((sum, u) => sum + (u.stock[e] || 0), 0);
-          const sinEtiq = Object.values(state.usuarios).reduce((sum, u) => sum + ((u.stockSinEtiqueta && u.stockSinEtiqueta[e]) || 0), 0);
-          const total = conEtiq + sinEtiq;
-          return `
-          <div class="flex space-between" style="padding: 4px 0; border-bottom: 1px solid #f3f4f6;">
-            <span>${e}</span>
-            <span style="font-size: 0.9em;">
-              <b style="color: #3b82f6;">C: ${conEtiq}</b> |
-              <b style="color: #6b7280;">S: ${sinEtiq}</b> |
-              <b style="color: ${total < 0? '#ef4444' : '#1f2937'};">Total: ${total} un.</b>
-            </span>
-          </div>`;
-        }).join("")}
+        <table style="width:100%; border-collapse: collapse; margin-top:10px;">
+          <thead>
+            <tr style="border-bottom: 2px solid #e5e7eb; text-align: left;">
+              <th style="padding: 8px 4px; font-size: 0.9em;">Estilo</th>
+              <th style="padding: 8px 4px; text-align: center; font-size: 0.9em; color: #3b82f6;">Con Etiq</th>
+              <th style="padding: 8px 4px; text-align: center; font-size: 0.9em; color: #6b7280;">Sin Etiq</th>
+              <th style="padding: 8px 4px; text-align: center; font-size: 0.9em;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${estilosBase.map(e => {
+              const conEtiq = Object.values(state.usuarios).reduce((sum, u) => sum + (u.stock[e] || 0), 0);
+              const sinEtiq = Object.values(state.usuarios).reduce((sum, u) => sum + ((u.stockSinEtiqueta && u.stockSinEtiqueta[e]) || 0), 0);
+              const total = conEtiq + sinEtiq;
+              return `
+              <tr style="border-bottom: 1px solid #f3f4f6;">
+                <td style="padding: 6px 4px; font-weight: 500;">${e}</td>
+                <td style="padding: 6px 4px; text-align: center;">${conEtiq}</td>
+                <td style="padding: 6px 4px; text-align: center;">${sinEtiq}</td>
+                <td style="padding: 6px 4px; text-align: center; font-weight: bold; color: ${total < 0? '#ef4444' : '#1f2937'};">${total}</td>
+              </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
       </div>
       <div class="card" style="background: #f8fafc; border: 1px solid #e2e8f0;">
         <h2>Popularidad (% Ventas)</h2>
