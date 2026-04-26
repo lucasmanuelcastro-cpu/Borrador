@@ -49,7 +49,7 @@ function renderStockGeneral() {
                 ${estilosBase.reduce((sum, e) => sum + Object.values(state.usuarios).reduce((s, u) => s + (u.stock[e] || 0), 0), 0)}
               </td>
               <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: #6b7280;">
-                ${estilosBase.reduce((sum, e) => sum + Object.values(state.usuarios).reduce((s, u) => s + ((u.stockSinEtiqueta && u.stockSinEtiqueta[e]) || 0), 0), 0)}
+                ${estilosBase.reduce((sum, e) => sum + Object.values(state.usuarios).reduce((s, u) => s + ((u.stockSinEtiqueta && u.stockSinEtiqueta[e]) || 0), 0)}
               </td>
               <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: #1e40af;">
                 ${estilosBase.reduce((sum, e) => sum + Object.values(state.usuarios).reduce((s, u) => s + (u.stock[e] || 0) + ((u.stockSinEtiqueta && u.stockSinEtiqueta[e]) || 0), 0), 0)}
@@ -61,10 +61,10 @@ function renderStockGeneral() {
       <div class="card" style="background: #f8fafc; border: 1px solid #e2e8f0;">
         <h2>Popularidad (% Ventas)</h2>
         ${Object.entries(stats.totalesPorEstilo).length === 0
-       ? '<p style="color:gray; font-size: 0.9em;">Esperando primeras ventas...</p>'
+      ? '<p style="color:gray; font-size: 0.9em;">Esperando primeras ventas...</p>'
           : Object.entries(stats.totalesPorEstilo)
-           .sort((a, b) => b[1] - a[1])
-           .map(([estilo, cant]) => {
+          .sort((a, b) => b[1] - a[1])
+          .map(([estilo, cant]) => {
                 const porcentaje = ((cant / stats.granTotalLatas) * 100).toFixed(0);
                 return `
                   <div class="flex space-between" style="padding: 4px 0; border-bottom: 1px solid #e2e8f0;">
@@ -101,7 +101,6 @@ function renderVentasGeneral() {
         <p class="big-number" style="color: #2563eb;">$${dineroTransferencia.toLocaleString()}</p>
         <small>Ventas cobradas por transferencia</small>
       </div>
-    </div>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
       <div class="card" style="border-left: 4px solid #3b82f6;">
         <h2>💰 Total Ingresado</h2>
@@ -119,7 +118,7 @@ function renderVentasGeneral() {
       <h2>📋 Historial Global (${todasLasVentas.length} ventas)</h2>
       <div style="max-height: 300px; overflow-y: auto; margin-top: 10px;">
         ${todasLasVentas.length === 0
-       ? '<p style="color:gray;">No hay ventas registradas aún.</p>'
+      ? '<p style="color:gray;">No hay ventas registradas aún.</p>'
           : [...todasLasVentas].reverse().map(v => {
               const vendedor = v.vendedor || Object.keys(state.usuarios).find(u =>
                 state.usuarios[u].ventas.some(vv => vv === v)
@@ -183,7 +182,7 @@ function renderClientesGlobales() {
     </div>`;
 }
 
-// 4. PANEL DE USUARIO
+// 4. PANEL DE USUARIO - 3 COLUMNAS
 function renderPanelUsuario() {
   const container = document.getElementById("panel-usuario-container");
   if (!state.usuarioActivo) { container.innerHTML = ""; return; }
@@ -196,7 +195,7 @@ function renderPanelUsuario() {
   container.innerHTML = `
     <div class="panel-usuario card">
       <h1 style="border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">Panel de ${state.usuarioActivo}</h1>
-      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
 
         <!-- COLUMNA 1: STOCK PROPIO -->
         <div>
@@ -240,8 +239,8 @@ function renderPanelUsuario() {
             </tfoot>
           </table>
         </div>
-}
-        <!-- COLUMNA 2: AGREGAR STOCK - ESTA ESTABA VACÍA -->
+
+        <!-- COLUMNA 2: AGREGAR STOCK -->
         <div>
           <h3>➕ Agregar Stock</h3>
           ${estilosBase.map(e => `
@@ -415,8 +414,8 @@ function bindAutocompletadoCliente() {
     if (val.length < 1) { sugerencias.style.display = "none"; return; }
 
     const todos = [...new Set([
-  ...clientesHistoricos,
-  ...state.clientesGlobales.map(c => c.nombre)
+ ...clientesHistoricos,
+ ...state.clientesGlobales.map(c => c.nombre)
     ])];
     const filtrados = todos.filter(n => n.toLowerCase().includes(val)).slice(0, 8);
 
@@ -549,7 +548,4 @@ function renderTransferencia() {
       <h2>📦 Transferencia de Stock entre Usuarios</h2>
       <div class="flex" style="flex-wrap: wrap;">
         <select onchange="setState(p => { p.transferDesde = this.value; return p; })" style="width: auto;">
-          ${Object.keys(state.usuarios).map(u => `<option ${state.transferDesde === u? 'selected' : ''} value="${u}">${u}</option>`)}
-        </select>
-        <span> → </span>
-        <select onchange="setState(p => { p.transferHacia = this.value; return p;
+          ${Object.keys(state.usuarios).map(u => `<option ${state.transferDesde === u? 'selected' : ''} value="${u}">${
