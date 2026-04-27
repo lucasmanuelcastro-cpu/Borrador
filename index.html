@@ -76,6 +76,46 @@
 
     <!-- 🤖 Asistente IA -->
     <script src="claude-assistant.js"></script>
+<script>
+const URL_SCRIPT = 'https://script.google.com/macros/s/AKfycbzMd76MQpwnWeOluDo4SEX4rBAC4skskmFCgr73WCh2P33Mnh6OUUoBseTEJyGtRwkxtA/exec/exec?accion=clientesTodos';
+let clientesYaCargados = false;
 
+document.getElementById('btn-ver-clientes').addEventListener('click', function() {
+  const lista = document.getElementById('lista-clientes');
+  
+  // Si ya cargó, solo muestra/oculta
+  if (clientesYaCargados) {
+    lista.style.display = lista.style.display === 'none' ? 'block' : 'none';
+    return;
+  }
+  
+  lista.innerHTML = '<div style="color: #666;">Cargando clientes...</div>';
+  lista.style.display = 'block';
+  
+  fetch(URL_SCRIPT)
+   .then(res => res.json())
+   .then(data => {
+      const clientes = data.clientesTodos.filter(c => c.nombre!== "Nombre / IG / Apodo");
+      
+      if (clientes.length === 0) {
+        lista.innerHTML = '<div style="color: #999;">No hay clientes</div>';
+        return;
+      }
+      
+      lista.innerHTML = `
+        <div style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f9f9f9; max-height: 300px; overflow-y: auto;">
+          <b>Total: ${clientes.length} clientes</b><br><br>
+          ${clientes.map((c, i) => `${i + 1}. ${c.nombre}`).join('<br>')}
+        </div>
+      `;
+      
+      clientesYaCargados = true;
+    })
+   .catch(err => {
+      lista.innerHTML = '<div style="color: red;">❌ Error al cargar clientes</div>';
+      console.error(err);
+    });
+});
+</script>
 </body>
 </html>
