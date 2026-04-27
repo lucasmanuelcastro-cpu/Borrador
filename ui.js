@@ -449,7 +449,7 @@ function renderClientesGlobales() {
   const deudores = state.clientesGlobales.filter(c => (c.deuda - c.pagado) > 0);
   const deudaTotal = deudores.reduce((acc, c) => acc + (c.deuda - c.pagado), 0);
   container.innerHTML = `
-    <button id="btn-ver-clientes" onclick="mostrarTodosLosClientes()" style="background:#7c3aed; margin-bottom:10px;">👥 Ver todos los clientes (${state.clientesGlobales.length})</button>
+    
     <div class="card" style="border-left: 5px solid #ef4444;">
       <div class="flex space-between">
         <h2>👥 Cartera de Clientes (Deudores)</h2>
