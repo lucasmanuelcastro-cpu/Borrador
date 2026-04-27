@@ -4,84 +4,108 @@
 
 // ===== ESTADO Y DATOS =====
 const estilosBase = ["BLONDE", "IRISH RED", "STOUT", "SESSION IPA", "RED IPA", "HONEY"];
+const costoPorLata = 1750;
+const costoPorLataSinEtiqueta = 1450;
 
-const state = {
+let state = {
   usuarios: {
-    "Usuario1": {
-      stock: {"BLONDE": 0, "IRISH RED": 0, "STOUT": 0, "SESSION IPA": 0, "RED IPA": 0, "HONEY": 0},
-      stockSinEtiqueta: {"BLONDE": 0, "IRISH RED": 0, "STOUT": 0, "SESSION IPA": 0, "RED IPA": 0, "HONEY": 0},
-      ventas: []
-    }
+    Julian: { stock: {}, stockSinEtiqueta: {}, ventas: [] },
+    Matias: { stock: {}, stockSinEtiqueta: {}, ventas: [] },
+    Lucas: { stock: {}, stockSinEtiqueta: {}, ventas: [] },
   },
-  usuarioActivo: "Usuario1",
-  clienteNombre: "",
-  ventaActual: { BLONDE: "", "IRISH RED": "", STOUT: "", "SESSION IPA": "", "RED IPA": "", HONEY: "" },
-  alquilerBarril: "",
-  precioUnitario: "",
-  totalCobradoInput: "",
   clientesGlobales: [],
-  transferDesde: "Usuario1",
-  transferHacia: "Usuario1",
-  tipoLata: 'conEtiqueta',
+  stockGeneral: {},
+  usuarioActivo: "Julian",
+  ventaActual: { BLONDE: "", "IRISH RED": "", STOUT: "", "SESSION IPA": "", "RED IPA": "", HONEY: "" },
+  metodoPago: "efectivo",
+  clienteNombre: "",
+  totalCobradoInput: "",
+  alquilerBarril: "",
+  tipoLata: "conEtiqueta",
+  precioUnitario: "",
+  transferDesde: "Julian",
+  transferHacia: "Matias",
+  transferEstilo: "BLONDE",
+  transferCantidad: 0,
   historialStock: [],
   historialTransferencias: []
 };
 
-// ===== FUNCIONES DE ESTADO =====
 function setState(updater) {
-  const newState = updater(state);
-  Object.assign(state, newState);
+  state = typeof updater === "function"? updater(structuredClone(state)) : updater;
+  actualizarStockGeneral();
   render();
 }
 
-// ===== FUNCIONES DE LÓGICA =====
-function getEstadisticasVentas() {
-  const todasLasVentas = Object.values(state.usuarios).flatMap(u => u.ventas);
-  const totalesPorEstilo = {};
-  let granTotalLatas = 0;
-
-  todasLasVentas.forEach(v => {
-    Object.entries(v.estilos || {}).forEach(([estilo, cant]) => {
-      const c = Number(cant) || 0;
-      totalesPorEstilo[estilo] = (totalesPorEstilo[estilo] || 0) + c;
-      granTotalLatas += c;
+function actualizarStockGeneral() {
+  let total = {};
+  Object.values(state.usuarios).forEach((u) => {
+    Object.entries(u.stock).forEach(([estilo, cant]) => {
+      total[estilo] = (total[estilo] || 0) + (Number(cant) || 0);
     });
   });
-
-  return { totalesPorEstilo, granTotalLatas };
-}
-
-function getTotalVentasPorMetodo(metodo) {
-  return Object.values(state.usuarios).flatMap(u => u.ventas)
-  .filter(v => v.metodoCobro === metodo)
-  .reduce((sum, v) => sum + (v.totalCobrado || 0), 0);
-}
-
-function getTotalVentasDinero() {
-  return Object.values(state.usuarios).flatMap(u => u.ventas)
-  .reduce((sum, v) => sum + (v.totalCobrado || 0), 0);
-}
-
-function getGananciaTotalProfeta() {
-  return Object.values(state.usuarios).flatMap(u => u.ventas)
-  .reduce((sum, v) => sum + (v.paraProfeta || 0), 0);
-}
-
-function getVentasGenerales() {
-  return Object.values(state.usuarios).flatMap(u => u.ventas);
+  state.stockGeneral = total;
 }
 
 function calcularPreview() {
   const totalLatas = Object.values(state.ventaActual).reduce((a, b) => a + (Number(b) || 0), 0);
-  const costoUnitario = state.tipoLata === 'sinEtiqueta'? 1450 : 1750;
-  const costoTotal = totalLatas * costoUnitario;
-  const precioUnitario = Number(state.precioUnitario) || 0;
-  const totalCobrado = totalLatas * precioUnitario;
-  const gananciaBruta = totalCobrado - costoTotal;
-  const comision = gananciaBruta > 0? gananciaBruta * 0.5 : 0;
-  const paraProfeta = costoTotal + comision;
+  const totalCobrado = Number(state.totalCobradoInput) || 0;
+  const costo = state.tipoLata === "sinEtiqueta"? costoPorLataSinEtiqueta : costoPorLata;
+  const costoTotal = totalLatas * costo;
+  const gananciaBruta = totalCobrado > costoTotal? totalCobrado - costoTotal : 0;
+  const comision = gananciaBruta * 0.5;
+  return { costoTotal, comision, paraProfeta: costoTotal + comision, totalLatas, gananciaBruta };
+}
 
-  return { costoTotal, comision, paraProfeta, gananciaBruta };
+function getVentasGenerales() {
+  return Object.values(state.usuarios).flatMap((u) => u.ventas);
+}
+
+function getTotalVentasDinero() {
+  return getTotalVentasPorMetodo("efectivo") + getTotalVentasPorMetodo("transferencia");
+}
+
+function getTotalVentasPorMetodo(metodo) {
+  const nombresDeudores = new Set(
+    state.clientesGlobales.map(c => c.nombre.toLowerCase().trim())
+  );
+
+  const ventasAlContado = getVentasGenerales().filter(v =>
+    (v.metodoPago || "efectivo") === metodo &&
+    (!v.cliente || v.cliente.trim() === "" ||
+     v.cliente === "Consumidor Final" ||
+    !nombresDeudores.has(v.cliente.toLowerCase().trim()))
+  );
+  const totalContado = ventasAlContado.reduce((acc, v) => acc + (Number(v.totalCobrado) || 0), 0);
+
+  const cobrosDeuda = state.clientesGlobales.reduce((acc, c) => {
+    const pagos = c.pagos || [];
+    return acc + pagos
+     .filter(p => (p.metodo || "efectivo") === metodo)
+     .reduce((s, p) => s + (Number(p.monto) || 0), 0);
+  }, 0);
+
+  return totalContado + cobrosDeuda;
+}
+
+function getGananciaTotalProfeta() {
+  return getVentasGenerales().reduce((acc, v) => acc + (Number(v.paraProfeta) || 0), 0);
+}
+
+function getEstadisticasVentas() {
+  const ventas = getVentasGenerales();
+  const totalesPorEstilo = {};
+  let granTotalLatas = 0;
+  ventas.forEach(v => {
+    Object.entries(v.estilos || {}).forEach(([estilo, cant]) => {
+      const c = Number(cant) || 0;
+      if (c > 0) {
+        totalesPorEstilo[estilo] = (totalesPorEstilo[estilo] || 0) + c;
+        granTotalLatas += c;
+      }
+    });
+  });
+  return { totalesPorEstilo, granTotalLatas };
 }
 
 function registrarVentaLocal() {
@@ -95,6 +119,7 @@ function registrarVentaLocal() {
     estilos: {...state.ventaActual},
     alquilerBarril: state.alquilerBarril,
     tipoLata: state.tipoLata,
+    metodoPago: state.metodoPago,
     totalCobrado: Number(state.totalCobradoInput) || 0,
     costoTotal: preview.costoTotal,
     comision: preview.comision,
@@ -117,10 +142,10 @@ function registrarVentaLocal() {
     }
   });
 
-  if (state.clienteNombre) {
+  if (state.clienteNombre && state.clienteNombre!== 'Consumidor Final') {
     let cliente = state.clientesGlobales.find(c => c.nombre === state.clienteNombre);
     if (!cliente) {
-      cliente = { nombre: state.clienteNombre, deuda: 0, pagado: 0 };
+      cliente = { nombre: state.clienteNombre, deuda: 0, pagado: 0, pagos: [] };
       state.clientesGlobales.push(cliente);
     }
     cliente.deuda += Number(state.totalCobradoInput) || 0;
@@ -135,11 +160,21 @@ function registrarVentaLocal() {
   render();
 }
 
-function modificarStockDirecto(usuario, estilo, valor) {
-  const cantidadAnterior = state.usuarios[usuario].stock[estilo] || 0;
+function modificarStockDirecto(usuario, estilo, valor, tipo = 'conEtiqueta') {
   const cantidadNueva = Number(valor) || 0;
-  state.usuarios[usuario].stock[estilo] = cantidadNueva;
-  registrarCargaStock(usuario, estilo, cantidadNueva - cantidadAnterior, 'conEtiqueta');
+  const usuarioObj = state.usuarios[usuario];
+  const cantidadAnterior = tipo === 'sinEtiqueta'
+   ? (usuarioObj.stockSinEtiqueta?.[estilo] || 0)
+    : (usuarioObj.stock[estilo] || 0);
+
+  if (tipo === 'sinEtiqueta') {
+    if (!usuarioObj.stockSinEtiqueta) usuarioObj.stockSinEtiqueta = {};
+    usuarioObj.stockSinEtiqueta[estilo] = cantidadNueva;
+  } else {
+    usuarioObj.stock[estilo] = cantidadNueva;
+  }
+
+  registrarCargaStock(usuario, estilo, cantidadNueva - cantidadAnterior, tipo);
   render();
 }
 
@@ -149,13 +184,18 @@ function borrarVentaIndividual(index) {
   render();
 }
 
-function registrarPagoCliente(index, metodo) {
+function registrarPagoCliente(index, metodo, porcentaje) {
   const cliente = state.clientesGlobales[index];
   const deuda = cliente.deuda - cliente.pagado;
   if (deuda > 0) {
-    cliente.pagado += deuda;
-    alert(`Cobrado $${deuda.toLocaleString()} de ${cliente.nombre}`);
-    render();
+    const monto = porcentaje === '100'? deuda : porcentaje === '50'? deuda * 0.5 : 0;
+    if (monto > 0) {
+      cliente.pagado += monto;
+      if (!cliente.pagos) cliente.pagos = [];
+      cliente.pagos.push({ monto, metodo, fecha: new Date().toLocaleString('es-AR') });
+      alert(`Cobrado $${monto.toLocaleString()} de ${cliente.nombre}`);
+      render();
+    }
   }
 }
 
@@ -180,27 +220,74 @@ function registrarTransferenciaHistorial(desde, hacia, estilo, cantidad, tipo) {
   });
 }
 
-// ===== FUNCIONES DE GUARDADO =====
-async function guardarDatos() {
-  localStorage.setItem('profeta_data', JSON.stringify(state));
+function guardarDatos() {
+  const data = { usuarios: state.usuarios, clientes: state.clientesGlobales };
+  localStorage.setItem("elProfetaData", JSON.stringify(data));
+  alert("¡Datos y Cartera de Clientes guardados!");
 }
 
-async function cargarDatos() {
-  const data = localStorage.getItem('profeta_data');
-  if (data) Object.assign(state, JSON.parse(data));
+function cargarDatos() {
+  const dataRaw = localStorage.getItem("elProfetaData");
+  if (dataRaw) {
+    const data = JSON.parse(dataRaw);
+    state.usuarios = data.usuarios || state.usuarios;
+    state.clientesGlobales = data.clientes || [];
+    actualizarStockGeneral();
+  }
 }
 
-async function guardarEnSheets() {
-  console.log('Guardando en Sheets...');
-}
+function guardarEnSheets() {
+  const SHEET_URL = "https://script.google.com/macros/s/AKfycbzsNDTHpBPGbIE8fGV9F8RJhjlKTyOB5AZEKkcm59OhTgX5ZIiw3rBFw5bZgFrBdrCG5Q/exec";
 
-async function guardarVentasPendientesEnSheet() {
-  console.log('Guardando ventas pendientes...');
+  const stats = getEstadisticasVentas();
+  const ventas = getVentasGenerales();
+
+  const totalCobrado = ventas.reduce((a, v) => a + (Number(v.totalCobrado) || 0), 0);
+  const totalProfeta = ventas.reduce((a, v) => a + (Number(v.paraProfeta) || 0), 0);
+  const totalEfectivo = getTotalVentasPorMetodo("efectivo");
+  const totalTransferencia = getTotalVentasPorMetodo("transferencia");
+
+  const clientes = state.clientesGlobales.map(function(c) {
+    return {
+      nombre: c.nombre,
+      deuda: Number(c.deuda) || 0,
+      pagado: Number(c.pagado) || 0,
+      saldo: (Number(c.deuda) || 0) - (Number(c.pagado) || 0)
+    };
+  });
+
+  const payload = {
+    stockGeneral: state.stockGeneral,
+    stockIndividual: Object.fromEntries(
+      Object.entries(state.usuarios).map(([nombre, u]) => [nombre, u.stock])
+    ),
+    popularidad: {
+      totalesPorEstilo: stats.totalesPorEstilo,
+      granTotalLatas: stats.granTotalLatas
+    },
+    ventas: {
+      totalCobrado: totalCobrado,
+      totalProfeta: totalProfeta,
+      totalEfectivo: totalEfectivo,
+      totalTransferencia: totalTransferencia,
+      cantidadVentas: ventas.length
+    },
+    clientes: clientes
+  };
+
+  fetch(SHEET_URL, {
+    method: "POST",
+    body: JSON.stringify(payload),
+    headers: { "Content-Type": "text/plain" }
+  })
+   .then(r => r.text())
+   .then(res => alert("✅ Datos guardados en Google Sheets"))
+   .catch(err => alert("❌ Error al guardar: " + err));
 }
 
 // ===== INICIALIZACIÓN =====
 document.addEventListener('DOMContentLoaded', async () => {
-  await cargarDatos();
+  cargarDatos();
   render();
 });
 
@@ -221,7 +308,10 @@ function renderStockGeneral() {
   container.innerHTML = `
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
       <div class="card">
-        <h2>Stock General (Disponible)</h2>
+        <div class="flex space-between">
+          <h2>Stock General (Disponible)</h2>
+          <button onclick="mostrarHistorialStock()" style="background:#7c3aed; padding:6px 12px; font-size:0.85em;">📜 Historial</button>
+        </div>
         <table style="width:100%; border-collapse: collapse; margin-top:10px;">
           <thead>
             <tr style="border-bottom: 2px solid #e5e7eb; text-align: left;">
@@ -264,10 +354,10 @@ function renderStockGeneral() {
       <div class="card" style="background: #f8fafc; border: 1px solid #e2e8f0;">
         <h2>Popularidad (% Ventas)</h2>
         ${Object.entries(stats.totalesPorEstilo).length === 0
-    ? '<p style="color:gray; font-size: 0.9em;">Esperando primeras ventas...</p>'
+   ? '<p style="color:gray; font-size: 0.9em;">Esperando primeras ventas...</p>'
           : Object.entries(stats.totalesPorEstilo)
-        .sort((a, b) => b[1] - a[1])
-        .map(([estilo, cant]) => {
+       .sort((a, b) => b[1] - a[1])
+       .map(([estilo, cant]) => {
                 const porcentaje = ((cant / stats.granTotalLatas) * 100).toFixed(0);
                 return `
                   <div class="flex space-between" style="padding: 4px 0; border-bottom: 1px solid #e2e8f0;">
@@ -305,7 +395,6 @@ function renderVentasGeneral() {
         <p class="big-number" style="color: #2563eb;">$${dineroTransferencia.toLocaleString()}</p>
         <small>Ventas cobradas por transferencia</small>
       </div>
-    </div>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
       <div class="card" style="border-left: 4px solid #3b82f6;">
         <h2>💰 Total Ingresado</h2>
@@ -323,7 +412,7 @@ function renderVentasGeneral() {
       <h2>📋 Historial Global (${todasLasVentas.length} ventas)</h2>
       <div style="max-height: 300px; overflow-y: auto; margin-top: 10px;">
         ${todasLasVentas.length === 0
-    ? '<p style="color:gray;">No hay ventas registradas aún.</p>'
+   ? '<p style="color:gray;">No hay ventas registradas aún.</p>'
           : [...todasLasVentas].reverse().map(v => {
               const vendedor = v.vendedor || Object.keys(state.usuarios).find(u =>
                 state.usuarios[u].ventas.some(vv => vv === v)
@@ -360,6 +449,7 @@ function renderClientesGlobales() {
   const deudores = state.clientesGlobales.filter(c => (c.deuda - c.pagado) > 0);
   const deudaTotal = deudores.reduce((acc, c) => acc + (c.deuda - c.pagado), 0);
   container.innerHTML = `
+    <button id="btn-ver-clientes" onclick="mostrarTodosLosClientes()" style="background:#7c3aed; margin-bottom:10px;">👥 Ver todos los clientes (${state.clientesGlobales.length})</button>
     <div class="card" style="border-left: 5px solid #ef4444;">
       <div class="flex space-between">
         <h2>👥 Cartera de Clientes (Deudores)</h2>
@@ -369,16 +459,16 @@ function renderClientesGlobales() {
         ${deudores.length === 0? '<p>No hay deudas pendientes</p>' :
           deudores.map((c) => {
             const idx = state.clientesGlobales.indexOf(c);
+            const deuda = c.deuda - c.pagado;
             return `
             <div style="padding: 8px 0; border-bottom: 1px solid #eee;">
               <div class="flex space-between" style="flex-wrap: wrap; gap: 6px; align-items: center;">
-                <span><b>${c.nombre}</b> (Debe: $${(c.deuda - c.pagado).toLocaleString()})</span>
-                <div style="display:flex; gap:6px; align-items:center;">
-                  <select id="metodo-cobro-${idx}" style="padding:4px 8px; border-radius:8px; border:1px solid #d1d5db; width:auto; margin-bottom:0;">
-                    <option value="efectivo">💵 Efectivo</option>
-                    <option value="transferencia">🏦 Transferencia</option>
-                  </select>
-                  <button onclick="registrarPagoCliente(${idx}, document.getElementById('metodo-cobro-${idx}').value)" style="background:#059669; padding:4px 10px;">Cobrar</button>
+                <span><b>${c.nombre}</b> (Debe: $${deuda.toLocaleString()})</span>
+                <div style="display:flex; gap:4px; align-items:center;">
+                  <button onclick="registrarPagoCliente(${idx}, 'efectivo', '100')" style="background:#059669; padding:4px 8px; font-size:0.8em;">💵 100%</button>
+                  <button onclick="registrarPagoCliente(${idx}, 'efectivo', '50')" style="background:#10b981; padding:4px 8px; font-size:0.8em;">💵 50%</button>
+                  <button onclick="registrarPagoCliente(${idx}, 'transferencia', '100')" style="background:#2563eb; padding:4px 8px; font-size:0.8em;">🏦 100%</button>
+                  <button onclick="registrarPagoCliente(${idx}, 'transferencia', '50')" style="background:#3b82f6; padding:4px 8px; font-size:0.8em;">🏦 50%</button>
                 </div>
               </div>
             </div>`;
@@ -403,7 +493,6 @@ function renderPanelUsuario() {
       <h1 style="border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">Panel de ${state.usuarioActivo}</h1>
       <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
 
-        <!-- COLUMNA 1: STOCK PROPIO -->
         <div>
           <h3>📦 Stock Propio</h3>
           <table style="width:100%; border-collapse: collapse; margin-top:10px; background: #f8fafc; border-radius: 8px;">
@@ -446,7 +535,6 @@ function renderPanelUsuario() {
           </table>
         </div>
 
-        <!-- COLUMNA 2: AGREGAR STOCK -->
         <div>
           <h3>➕ Agregar Stock</h3>
           ${estilosBase.map(e => `
@@ -460,7 +548,6 @@ function renderPanelUsuario() {
           </div>
           <button id="btn-reset-stock" style="width:100%; margin-top:6px; background:#ef4444; padding: 10px;">Reset Stock Total</button>
 
-          <!-- NUEVO: TRANSFERIR C/E ↔ S/E -->
           <div style="margin-top:15px; padding-top:15px; border-top:2px solid #e5e7eb;">
             <h4 style="margin:0 0 8px 0; font-size:0.9em;">🔄 Convertir Stock Propio</h4>
             <select id="transfer-estilo" style="width:100%; margin-bottom:6px; padding:6px; font-size:0.85em;">
@@ -474,7 +561,6 @@ function renderPanelUsuario() {
           </div>
         </div>
 
-        <!-- COLUMNA 3: REGISTRAR VENTA -->
         <div>
           <h3>🛒 Registrar Venta</h3>
 
@@ -519,7 +605,7 @@ function renderPanelUsuario() {
                 style="flex:1; padding: 8px 4px; border-radius: 8px;
                        border: 2px solid ${state.tipoLata === 'sinEtiqueta'? '#60a5fa' : '#334155'};
                        background: ${state.tipoLata === 'sinEtiqueta'? '#60a5fa' : '#0f172a'};
-                       color: ${state.tipoLata === 'sinEtiqueta'? '#1e293b' : '#64748b'};
+                                             color: ${state.tipoLata === 'sinEtiqueta'? '#1e293b' : '#64748b'};
                        font-weight: bold; font-size: 0.8em; cursor: pointer; line-height: 1.4;">
                 📦 Sin Etiqueta<br><span style="font-size:0.85em; font-weight:normal;">$1.450</span>
               </button>
@@ -571,7 +657,6 @@ function renderPanelUsuario() {
         <div>
           <button id="btn-guardar" style="background:#059669;">💾 Guardar en Sheet</button>
         </div>
-      </div>
       <div id="historial-lista" style="margin-top: 15px;">
         ${usuario.ventas.length === 0? '<p>No hay ventas registradas</p>' :
           [...usuario.ventas].reverse().map((v, i) => `
@@ -583,7 +668,7 @@ function renderPanelUsuario() {
                   <small>📅 ${v.fecha || ''}</small>
                 </div>
                 <div style="color: #666; margin: 4px 0;">
-                                    ${Object.entries(v.estilos || {}).filter(([,c]) => Number(c) > 0).map(([e,c]) => `${c} ${e}`).join(", ") || '—'}
+                  ${Object.entries(v.estilos || {}).filter(([,c]) => Number(c) > 0).map(([e,c]) => `${c} ${e}`).join(", ") || '—'}
                   <b style="color:#1e40af;">(${Object.values(v.estilos || {}).reduce((a,b) => a+(Number(b)||0),0)} latas)</b>
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
@@ -591,7 +676,6 @@ function renderPanelUsuario() {
                   <span style="color:#059669;">Comisión: $${(v.comision||0).toLocaleString()}</span>
                   <span style="color:#b45309;">👑 Profeta: $${(v.paraProfeta||0).toLocaleString()}</span>
                 </div>
-              </div>
               <button onclick="borrarVentaIndividual(${usuario.ventas.length - 1 - i})" title="Borrar esta venta"
                 style="margin-left:12px; background:#ef4444; padding:4px 10px; font-size:0.85em; border-radius:6px; flex-shrink:0; cursor:pointer;">
                 🗑️
@@ -606,7 +690,6 @@ function renderPanelUsuario() {
   bindPrecioUnitario();
 }
 
-// 5. PRECIO UNITARIO
 function bindPrecioUnitario() {
   const input = document.getElementById("precio-unitario");
   if (!input) return;
@@ -621,7 +704,6 @@ function bindPrecioUnitario() {
   });
 }
 
-// 6. AUTOCOMPLETADO CLIENTE
 function bindAutocompletadoCliente() {
   const input = document.getElementById("cliente-nombre");
   const sugerencias = document.getElementById("sugerencias-cliente");
@@ -670,7 +752,6 @@ function seleccionarCliente(nombre) {
   }
 }
 
-// 7. EVENTOS
 function bindPanelEventos() {
   document.querySelectorAll("[data-stock]").forEach(i =>
     i.onchange = (e) => modificarStockDirecto(state.usuarioActivo, e.target.dataset.stock, e.target.value));
@@ -701,9 +782,8 @@ function bindPanelEventos() {
   if (btnGuardar) btnGuardar.onclick = async function() {
     this.disabled = true;
     this.textContent = "⏳ Guardando...";
-    await guardarDatos();
-    await guardarEnSheets();
-    await guardarVentasPendientesEnSheet();
+    guardarDatos();
+    guardarEnSheets();
     this.disabled = false;
     this.textContent = "💾 Guardar en Sheet";
   };
@@ -714,7 +794,7 @@ function bindPanelEventos() {
       const estilo = input.dataset.agregar;
       const cantidad = Number(input.value);
       if (!isNaN(cantidad) && input.value.trim()!== "" && cantidad!== 0) {
-        modificarStockDirecto(state.usuarioActivo, estilo, (state.usuarios[state.usuarioActivo].stock[estilo] || 0) + cantidad);
+        modificarStockDirecto(state.usuarioActivo, estilo, (state.usuarios[state.usuarioActivo].stock[estilo] || 0) + cantidad, 'conEtiqueta');
         input.value = "";
       }
     });
@@ -758,7 +838,6 @@ function bindPanelEventos() {
     }
   };
 
-  // NUEVO: Transferir C/E ↔ S/E
   const btnCeSe = document.getElementById("btn-ce-a-se");
   if (btnCeSe) btnCeSe.onclick = () => {
     const estilo = document.getElementById("transfer-estilo").value;
@@ -811,7 +890,10 @@ function renderTransferencia() {
   if (!container) return;
   container.innerHTML = `
     <div class="card">
-      <h2>📦 Transferencia de Stock entre Usuarios</h2>
+      <div class="flex space-between">
+        <h2>📦 Transferencia de Stock entre Usuarios</h2>
+        <button onclick="mostrarHistorialTransferencias()" style="background:#7c3aed; padding:6px 12px; font-size:0.85em;">📜 Historial</button>
+      </div>
       <div class="flex" style="flex-wrap: wrap; gap: 10px; align-items: center;">
         <select onchange="setState(p => { p.transferDesde = this.value; return p; })" style="width: auto; padding: 8px; border-radius: 6px;">
           ${Object.keys(state.usuarios).map(u => `<option ${state.transferDesde === u? 'selected' : ''} value="${u}">${u}</option>`).join("")}
@@ -872,6 +954,70 @@ function renderTransferencia() {
       }
     });
   };
+}
+
+function mostrarHistorialStock() {
+  const modal = document.createElement("div");
+  modal.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px;";
+
+  modal.innerHTML = `
+    <div style="background:white; border-radius:12px; padding:24px; max-width:700px; width:100%; max-height:80vh; overflow-y:auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2 style="margin:0;">📜 Historial de Cargas de Stock</h2>
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="background:#ef4444; padding:8px 16px;">✕ Cerrar</button>
+      </div>
+      <div>
+        ${state.historialStock.length === 0? '<p style="color:gray;">No hay cargas registradas</p>' :
+          [...state.historialStock].reverse().map(h => `
+          <div style="border-bottom:1px solid #e5e7eb; padding:10px 0; font-size:0.9em;">
+            <div style="display:flex; justify-content:space-between;">
+              <span><b>${h.usuario}</b> - ${h.estilo}</span>
+              <small style="color:#64748b;">${h.fecha}</small>
+            </div>
+            <div style="margin-top:4px;">
+              <span style="background:${h.cantidad > 0? '#dcfce7' : '#fee2e2'}; color:${h.cantidad > 0? '#166534' : '#991b1b'}; padding:2px 8px; border-radius:4px; font-weight:600;">
+                ${h.cantidad > 0? '+' : ''}${h.cantidad}
+              </span>
+              <span style="margin-left:8px; color:#6b7280;">${h.tipo === 'conEtiqueta'? '🏷️ Con Etiqueta' : '📦 Sin Etiqueta'}</span>
+            </div>
+          </div>`).join("")}
+      </div>
+    </div>`;
+
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+  document.body.appendChild(modal);
+}
+
+function mostrarHistorialTransferencias() {
+  const modal = document.createElement("div");
+  modal.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px;";
+
+  modal.innerHTML = `
+    <div style="background:white; border-radius:12px; padding:24px; max-width:700px; width:100%; max-height:80vh; overflow-y:auto;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2 style="margin:0;">🚚 Historial de Transferencias</h2>
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="background:#ef4444; padding:8px 16px;">✕ Cerrar</button>
+      </div>
+      <div>
+        ${state.historialTransferencias.length === 0? '<p style="color:gray;">No hay transferencias registradas</p>' :
+          [...state.historialTransferencias].reverse().map(h => `
+          <div style="border-bottom:1px solid #e5e7eb; padding:10px 0; font-size:0.9em;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <span><b>${h.desde}</b> → <b>${h.hacia}</b></span>
+              <small style="color:#64748b;">${h.fecha}</small>
+            </div>
+            <div>
+              <span style="background:#ede9fe; color:#7c3aed; padding:2px 8px; border-radius:4px; font-weight:600;">
+                ${h.cantidad} ${h.estilo}
+              </span>
+              <span style="margin-left:8px; color:#6b7280;">${h.tipo === 'conEtiqueta'? '🏷️ Con Etiqueta' : '📦 Sin Etiqueta'}</span>
+            </div>
+          </div>`).join("")}
+      </div>
+    </div>`;
+
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+  document.body.appendChild(modal);
 }
 
 function mostrarTodosLosClientes() {
