@@ -1,7 +1,4 @@
 
-const costoPorLata = 1750;
-const costoPorLataSinEtiqueta = 1450;
-
 let state = {
   usuarios: {
   Julian: { stock: {}, stockSinEtiqueta: {}, ventas: [] },
