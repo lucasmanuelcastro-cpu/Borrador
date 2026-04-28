@@ -198,35 +198,48 @@ async function cargarDatosDesdeSheet() {
     const texto = await respuesta.text();
     const datosCloud = JSON.parse(texto.trim().replace(/^\uFEFF/, ""));
     if (datosCloud.error) throw new Error(datosCloud.error);
-    if (!datosCloud.usuarios || typeof datosCloud.usuarios !== "object") return;
+    if (!datosCloud.usuarios || typeof datosCloud.usuarios!== "object") return;
 
     setState((prev) => {
+      // 1. GUARDAR STOCK GENERAL - NUEVO
+      if (datosCloud.stockGeneral) {
+        prev.stockGeneral = {
+          "BLONDE": Number(datosCloud.stockGeneral["BLONDE"]) || 0,
+          "IRISH RED": Number(datosCloud.stockGeneral["IRISH RED"]) || 0,
+          "STOUT": Number(datosCloud.stockGeneral["STOUT"]) || 0,
+          "SESSION IPA": Number(datosCloud.stockGeneral["SESSION IPA"]) || 0,
+          "RED IPA": Number(datosCloud.stockGeneral["RED IPA"]) || 0,
+          "HONEY": Number(datosCloud.stockGeneral["HONEY"]) || 0,
+          "LATAS SIN ETIQUETA": Number(datosCloud.stockGeneral["LATAS SIN ETIQUETA"]) || 0
+        };
+      }
+
+      // 2. SINCRONIZAR STOCK POR USUARIO - AHORA CON LATAS SIN ETIQUETA
       Object.entries(datosCloud.usuarios).forEach(([nombre, datos]) => {
         if (prev.usuarios[nombre]) {
-          // Sincronizar stock
           if (datos.stock) {
             prev.usuarios[nombre].stock = {
-              "BLONDE":      Number(datos.stock["BLONDE"])      || 0,
-              "IRISH RED":   Number(datos.stock["IRISH RED"])   || 0,
-              "STOUT":       Number(datos.stock["STOUT"])       || 0,
+              "BLONDE": Number(datos.stock["BLONDE"]) || 0,
+              "IRISH RED": Number(datos.stock["IRISH RED"]) || 0,
+              "STOUT": Number(datos.stock["STOUT"]) || 0,
               "SESSION IPA": Number(datos.stock["SESSION IPA"]) || 0,
-              "RED IPA":     Number(datos.stock["RED IPA"])     || 0,
-              "HONEY":       Number(datos.stock["HONEY"])       || 0
+              "RED IPA": Number(datos.stock["RED IPA"]) || 0,
+              "HONEY": Number(datos.stock["HONEY"]) || 0,
+              "LATAS SIN ETIQUETA": Number(datos.stock["LATAS SIN ETIQUETA"]) || 0
             };
           }
-          // Sincronizar ventas desde el Sheet (reemplaza las locales para tener consistencia)
+          // Sincronizar ventas desde el Sheet
           if (datos.ventas && Array.isArray(datos.ventas) && datos.ventas.length > 0) {
             prev.usuarios[nombre].ventas = datos.ventas;
           }
         }
       });
 
-      // Sincronizar clientes/deudores desde el Sheet
+      // 3. SINCRONIZAR CLIENTES/DEUDORES
       if (datosCloud.clientes && Array.isArray(datosCloud.clientes) && datosCloud.clientes.length > 0) {
-        // Mergear: preservar pagos locales si existen
         datosCloud.clientes.forEach(clienteCloud => {
           const idx = prev.clientesGlobales.findIndex(c => c.nombre.toLowerCase() === clienteCloud.nombre.toLowerCase());
-          if (idx !== -1) {
+          if (idx!== -1) {
             prev.clientesGlobales[idx].deuda = clienteCloud.deuda;
             prev.clientesGlobales[idx].saldo = clienteCloud.saldo;
           } else {
@@ -247,11 +260,13 @@ async function cargarDatosDesdeSheet() {
       clientesHistoricos = datosCloud.clientesHistoricos;
     }
 
-    console.log("✅ Sync exitosa — stock, ventas y clientes cargados.");
+    console.log("✅ Sync exitosa — stock general, individual y ventas cargados.");
+    console.log("Stock General:", datosCloud.stockGeneral);
   } catch (error) {
     console.error("❌ Error de lectura:", error);
   }
 }
+
 function agregarStockDirecto(estilo, conEtiqueta) {
   const input = document.querySelector(`[data-agregar="${estilo}"]`);
   if (!input ||!input.value || input.value.trim() === "") {
